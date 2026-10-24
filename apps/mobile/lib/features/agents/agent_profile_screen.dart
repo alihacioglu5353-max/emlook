@@ -6,6 +6,7 @@ import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/listing_tile.dart';
+import '../../widgets/profile_avatar.dart';
 import '../session.dart';
 import 'follow_button.dart';
 
@@ -81,12 +82,7 @@ class _AgentProfileScreenState extends State<AgentProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              CircleAvatar(
-                radius: 30,
-                backgroundColor: EmColors.paper,
-                child: Text((p.fullName ?? '?').characters.first,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: EmColors.ink)),
-              ),
+              ProfileAvatar(api: widget.session.api, avatar: p.avatar, name: p.fullName, radius: 30),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -101,6 +97,16 @@ class _AgentProfileScreenState extends State<AgentProfileScreen> {
                         child: Icon(Icons.verified, color: EmColors.verified, semanticLabel: 'Onaylı danışman'),
                       ),
                   ]),
+                  if (p.badge != null) ...[
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      BadgeChip(p.badge),
+                      if (p.score != null) ...[
+                        const SizedBox(width: 6),
+                        Text('${p.score} puan', style: const TextStyle(fontSize: 12, color: EmColors.inkSoft)),
+                      ],
+                    ]),
+                  ],
                   const SizedBox(height: 2),
                   Row(children: [
                     Flexible(

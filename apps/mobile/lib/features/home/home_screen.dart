@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/models.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/profile_avatar.dart';
 import '../session.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -37,6 +38,8 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    ProfileAvatar(api: session.api, avatar: me.avatar, name: me.fullName, radius: 22),
+                    const SizedBox(width: 12),
                     Flexible(
                       child: Text(
                         'Merhaba ${me.firstName}',
@@ -46,6 +49,10 @@ class HomeScreen extends StatelessWidget {
                     if (me.isVerified) ...[
                       const SizedBox(width: 8),
                       const Icon(Icons.verified, color: EmColors.verified, semanticLabel: 'Onaylı danışman'),
+                    ],
+                    if (me.badge != null) ...[
+                      const SizedBox(width: 8),
+                      BadgeChip(me.badge),
                     ],
                   ],
                 ),

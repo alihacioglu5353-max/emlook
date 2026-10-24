@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/api_client.dart';
 import '../core/locations.dart';
 import '../core/models.dart';
 import '../core/token_store.dart';
+import '../widgets/profile_avatar.dart';
 
 enum SessionState { unknown, signedOut, signedIn }
 
@@ -92,6 +95,7 @@ class Session extends ChangeNotifier {
   }
 
   Future<void> reloadMe() async {
+    unawaited(BadgeTiers.load(api));
     me = Me.fromJson(await api.get<Map<String, dynamic>>('/me'));
     _set(SessionState.signedIn);
     await refreshUnread();

@@ -5,6 +5,7 @@ import '../core/api_client.dart';
 import '../core/listings.dart';
 import '../core/theme.dart';
 import 'auth_image.dart';
+import 'profile_avatar.dart';
 
 /// Akış, arama, kaydedilenler ve portföyde kullanılan ilan kartı.
 class ListingTile extends StatefulWidget {
@@ -140,6 +141,8 @@ class _ListingTileState extends State<ListingTile> {
                   if (widget.showOwner)
                     Expanded(
                       child: Row(children: [
+                        ProfileAvatar(api: widget.api, avatar: l.ownerAvatar, name: l.ownerName, radius: 10),
+                        const SizedBox(width: 6),
                         Flexible(
                           child: Text(
                             [l.ownerName, l.ownerOffice].whereType<String>().join(' · '),
@@ -152,6 +155,11 @@ class _ListingTileState extends State<ListingTile> {
                           const Padding(
                             padding: EdgeInsets.only(left: 4),
                             child: Icon(Icons.verified, size: 14, color: EmColors.verified),
+                          ),
+                        if (l.ownerBadge != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: BadgeChip(l.ownerBadge, small: true),
                           ),
                       ]),
                     )
