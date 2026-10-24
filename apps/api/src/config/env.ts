@@ -14,8 +14,10 @@ export interface Env {
   OTP_MAX_ATTEMPTS: number;
   OTP_RESEND_SECONDS: number;
   OTP_HOURLY_LIMIT: number;
-  /** console: koda loga yazar · memory: testler için bellekte tutar */
-  SMS_PROVIDER: 'console' | 'memory';
+  /** console: kodu loga yazar · memory: testler · netgsm: gerçek SMS */
+  SMS_PROVIDER: 'console' | 'memory' | 'netgsm';
+  /** Netgsm (SMS_PROVIDER=netgsm iken zorunlu) */
+  NETGSM: { userCode: string; password: string; header: string; useOtpEndpoint: boolean; baseUrl: string } | null;
   STORAGE_DIR: string;
   MAX_UPLOAD_MB: number;
   CORS_ORIGINS: string[];
@@ -79,7 +81,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw new Error(`Geçersiz NODE_ENV: ${nodeEnv}`);
   }
   const smsProvider = optional(raw, 'SMS_PROVIDER', 'console');
-  if (!['console', 'memory'].includes(smsProvider)) {
+  if (!['console', 'memory', 'netgsm'].includes(smsProvider)) {
     throw new Error(`Geçersiz SMS_PROVIDER: ${smsProvider}`);
   }
 
@@ -111,6 +113,17 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     OTP_RESEND_SECONDS: int(raw, 'OTP_RESEND_SECONDS', 60),
     OTP_HOURLY_LIMIT: int(raw, 'OTP_HOURLY_LIMIT', 5),
     SMS_PROVIDER: smsProvider as Env['SMS_PROVIDER'],
+    NETGSM:
+      smsProvider === 'netgsm'
+        ? {
+            userCode: required(raw, 'NETGSM_USERCODE'),
+            password: required(raw, 'NETGSM_PASSWORD'),
+            header: required(raw, 'NETGSM_HEADER'),
+            // OTP paketi (hızlı, öncelikli hat) varsayılan; kapatılırsa normal gönderim
+            useOtpEndpoint: optional(raw, 'NETGSM_USE_OTP', 'true') !== 'false',
+            baseUrl: optional(raw, 'NETGSM_BASE_URL', 'https://api.netgsm.com.tr').replace(/\/$/, ''),
+          }
+        : null,
     STORAGE_DIR: optional(raw, 'STORAGE_DIR', './uploads'),
     MAX_UPLOAD_MB: int(raw, 'MAX_UPLOAD_MB', 10),
     CORS_ORIGINS: list(raw, 'CORS_ORIGINS'),
@@ -136,13 +149,15 @@ export function validateEnv(raw: Record<string, unknown>): Env {
   };
 
   if (env.NODE_ENV === 'production') {
-    // Gerçek SMS sağlayıcısı (Netgsm, İleti Merkezi vb.) eklendiğinde
-    // üretimde 'console' da yasaklanmalı.
     if (env.EIDS_PROVIDER === 'mock') {
       throw new Error('Üretimde EIDS_PROVIDER=mock kullanılamaz');
     }
     if (env.SMS_PROVIDER === 'memory') {
       throw new Error('Üretimde SMS_PROVIDER=memory kullanılamaz');
+    }
+    if (env.SMS_PROVIDER === 'console' && raw.ALLOW_CONSOLE_SMS !== 'true') {
+      // Kodlar loga yazılırsa giriş güvenliği olmaz
+      throw new Error('Üretimde gerçek SMS sağlayıcısı gerekli (SMS_PROVIDER=netgsm)');
     }
     if (env.PAYMENT_PROVIDER === 'mock' && raw.ALLOW_MOCK_PAYMENTS !== 'true') {
       // Gerçek sağlayıcı (Trinkle360) eklenene kadar üretimde ödeme alınmaz

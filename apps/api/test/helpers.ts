@@ -45,6 +45,7 @@ export async function resetDb(ctx: TestContext): Promise<void> {
              RESTART IDENTITY CASCADE
   `);
   ctx.sms.outbox.length = 0;
+  ctx.sms.failNext = false;
 }
 
 /** SMS kutusundan son kodu okur. */

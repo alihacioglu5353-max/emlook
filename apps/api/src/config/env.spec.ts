@@ -37,12 +37,38 @@ describe('validateEnv', () => {
       PAYMENT_WEBHOOK_SECRET: long,
       EIDS_PROVIDER: 'manual',
       ALLOW_MOCK_PAYMENTS: 'true',
+      SMS_PROVIDER: 'netgsm',
+      NETGSM_USERCODE: '8501234567',
+      NETGSM_PASSWORD: 'parola',
+      NETGSM_HEADER: 'EMLOOK',
     };
     expect(() => validateEnv(prod)).toThrow('en az 32');
     const strong = { ...prod, JWT_ACCESS_SECRET: long, OTP_SECRET: long };
     expect(() => validateEnv({ ...strong, SMS_PROVIDER: 'memory' })).toThrow('memory');
     expect(() => validateEnv({ ...strong, PAYMENT_WEBHOOK_SECRET: '' })).toThrow('PAYMENT_WEBHOOK_SECRET');
     expect(() => validateEnv({ ...strong, ALLOW_MOCK_PAYMENTS: undefined })).toThrow('PAYMENT_PROVIDER=mock');
+    expect(() => validateEnv({ ...strong, SMS_PROVIDER: 'console' })).toThrow('gerçek SMS');
+    expect(validateEnv({ ...strong, SMS_PROVIDER: 'console', ALLOW_CONSOLE_SMS: 'true' }).SMS_PROVIDER).toBe('console');
     expect(validateEnv(strong).PLATFORM_FEE_BPS).toBe(500);
+  });
+
+  it('Netgsm seçilince kimlik bilgilerini ister ve varsayılanları doldurur', () => {
+    expect(() => validateEnv({ ...base, SMS_PROVIDER: 'netgsm' })).toThrow('NETGSM_USERCODE');
+    const env = validateEnv({
+      ...base,
+      SMS_PROVIDER: 'netgsm',
+      NETGSM_USERCODE: '8501234567',
+      NETGSM_PASSWORD: 'p',
+      NETGSM_HEADER: 'EMLOOK',
+      NETGSM_USE_OTP: 'false',
+    });
+    expect(env.NETGSM).toEqual({
+      userCode: '8501234567',
+      password: 'p',
+      header: 'EMLOOK',
+      useOtpEndpoint: false,
+      baseUrl: 'https://api.netgsm.com.tr',
+    });
+    expect(validateEnv(base).NETGSM).toBeNull();
   });
 });

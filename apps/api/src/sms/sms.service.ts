@@ -7,9 +7,21 @@ export interface SmsMessage {
   sentAt: Date;
 }
 
+/** Sağlayıcı SMS'i kabul etmedi veya ulaşılamadı. */
+export class SmsDeliveryError extends Error {
+  constructor(
+    message: string,
+    readonly retryable = false,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = 'SmsDeliveryError';
+  }
+}
+
 /**
- * SMS gönderim soyutlaması. Üretim için Netgsm / İleti Merkezi gibi bir
- * sağlayıcı bu sınıfı genişleten yeni bir sınıf olarak eklenir.
+ * SMS gönderim soyutlaması: `console` (geliştirme), `memory` (test),
+ * `netgsm` (üretim, bkz. netgsm.ts). Başarısız gönderim SmsDeliveryError fırlatır.
  */
 export abstract class SmsService {
   abstract send(to: string, body: string): Promise<void>;
@@ -28,7 +40,13 @@ export class ConsoleSmsService extends SmsService {
 @Injectable()
 export class MemorySmsService extends SmsService {
   readonly outbox: SmsMessage[] = [];
+  /** Testte sağlayıcı hatasını taklit etmek için: sıradaki gönderim başarısız olur */
+  failNext = false;
   async send(to: string, body: string): Promise<void> {
+    if (this.failNext) {
+      this.failNext = false;
+      throw new SmsDeliveryError('Test: sağlayıcı hatası', true);
+    }
     this.outbox.push({ to, body, sentAt: new Date() });
   }
   lastTo(to: string): SmsMessage | undefined {

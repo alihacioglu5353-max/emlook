@@ -53,6 +53,18 @@ describe('Kimlik doğrulama (OTP ve oturum)', () => {
     expect(row.codeHash).not.toContain(code);
   });
 
+  it('SMS iletilemezse 503 döner ve hemen yeniden kod istenebilir', async () => {
+    ctx.sms.failNext = true;
+    const res = await ctx
+      .http()
+      .post('/api/v1/auth/otp/request')
+      .send({ phone: '05321112233' })
+      .expect(503);
+    expect(res.body.code).toBe('SMS_FAILED');
+    await ctx.http().post('/api/v1/auth/otp/request').send({ phone: '05321112233' }).expect(200);
+    expect(ctx.sms.outbox).toHaveLength(1);
+  });
+
   it('kodu ikinci kez kabul etmez', async () => {
     await ctx.http().post('/api/v1/auth/otp/request').send({ phone: '05321112233' });
     const code = lastCode(ctx, '+905321112233');
