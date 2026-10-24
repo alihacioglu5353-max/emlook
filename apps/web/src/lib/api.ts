@@ -427,3 +427,23 @@ export interface InterestList {
   items: InterestItem[];
   counts: Record<InterestStatus, number>;
 }
+
+// ---- E6 · Arama ----
+
+export interface SearchResult {
+  parsed: {
+    dealType: DealType | null;
+    category: ListingCategory | null;
+    rooms: string | null;
+    minPrice: number | null;
+    maxPrice: number | null;
+    minM2: number | null;
+    maxM2: number | null;
+    city: { code: string; name: string } | null;
+    district: { id: number; name: string; cityCode: string } | null;
+    text: string[];
+  };
+  total: number;
+  items: ListingCard[];
+  nextOffset: number | null;
+}

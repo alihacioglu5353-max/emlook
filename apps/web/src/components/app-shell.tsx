@@ -103,6 +103,7 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
           </Link>
           <nav className="hidden gap-1 sm:flex">{navLinks}</nav>
           <div className="ml-auto flex items-center gap-3">
+            {ready && me.role !== "admin" && <HeaderSearch />}
             {ready && <NotificationBell role={me.role} />}
             {me && (
               <span className="hidden items-center gap-1.5 text-sm font-semibold sm:inline-flex">
@@ -143,5 +144,41 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
         )}
       </main>
     </div>
+  );
+}
+
+/** Üst çubuktaki hızlı arama: /ara sayfasına serbest metinle gider */
+function HeaderSearch() {
+  const router = useRouter();
+  return (
+    <>
+      <form
+        role="search"
+        className="hidden xl:block"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const q = new FormData(e.currentTarget).get("q")?.toString().trim() ?? "";
+          router.push(q ? `/ara?q=${encodeURIComponent(q)}` : "/ara");
+        }}
+      >
+        <input
+          name="q"
+          type="search"
+          aria-label="Portföy ara"
+          placeholder="Ara: kadıköy 3+1…"
+          className="h-10 w-56 rounded-full border border-line bg-paper px-4 text-sm focus:border-ink focus:bg-surface focus:outline-none"
+        />
+      </form>
+      <Link
+        href="/ara"
+        aria-label="Ara"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-paper hover:text-ink xl:hidden"
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
+          <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.8" />
+          <path d="m16 16 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+      </Link>
+    </>
   );
 }

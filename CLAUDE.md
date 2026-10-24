@@ -66,6 +66,15 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
   Kabul = eşleşme → E7'de konuşma buradan açılacak. Mülk sahipleri de ilgi gösterebilir (alıcı adayı).
 - Web: `/kesfet` (sürükle/klavye ← →, geri al), `/talepler` (Gelen / Gönderdiğim), ilan detayında "İlgileniyorum".
 
+## E6 tasarımı (arama)
+- `search/parse-query.ts`: serbest metin → il/ilçe (belirsiz ilçe adı yalnızca il ile), satılık/kiralık, kategori, oda, fiyat
+  ("10 milyon altı", "20-35 bin", "15.000.000 tl üstü"; niteleyicisiz fiyat = bütçe üst sınırı), m² (±%15 veya sınır). Kalan kelimeler
+  `search_text` içinde ILIKE (başlık, konum, kategori, açıklamanın ilk 1000 karakteri). İl/ilçe adları serviste bellekte.
+- `GET /search`: açık parametreler ayrıştırılanların önüne geçer; `parsed` döner ("Anladığım" çipleri); toplam + offset sayfalama; sıralama yeni/fiyat.
+- `GET /search/agents?q=`: ad, unvan, ofis; `translate()` ile Türkçe karakterden bağımsız.
+- Migration 0004 (özel SQL): `pg_trgm` + `search_text` GIN indeksi — şemada tanımlı değil.
+- Web: `/ara` (URL tek kaynak, paylaşılabilir), üst çubukta hızlı arama.
+
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
@@ -74,11 +83,12 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - **E3 tamam (API, web):** ilan girişi, konum, fotoğraf, EİDS soyutlaması, yayın kuralları, görünürlük. Toplam 35 e2e testi. Mobil ekranlar en sona.
 - **E4 tamam (API, web):** akış (Emlook Ağı / Benim Ağım), takip, beğeni, kaydetme, öneriler, danışman profili. Toplam 39 e2e testi.
 - **E5 tamam (API, web):** keşfet kartları, kaydırma, geri alma, ilgi/eşleşme akışı. Toplam 43 e2e testi.
+- **E6 tamam (API, web):** serbest metin ayrıştırma, filtreler, sıralama, danışman araması. Toplam 47 e2e + 28 birim testi.
 - **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
-1. E6 Arama → E7 Mesajlaşma → E8 Ödeme → E9 Admin; mobil ekranlar ve testleri en sonda
+1. E7 Mesajlaşma → E8 Ödeme → E9 Admin; mobil ekranlar ve testleri en sonda
 2. Gerçek SMS sağlayıcısı (Netgsm / İleti Merkezi) ve S3 uyumlu depolama sürücüsü
 3. KVKK aydınlatma ve kullanım koşulları nihai metinleri (şu an yer tutucu)
 4. E7 push bildirimleri (FCM/APNs) — `NotificationsService.notify` üzerinden
