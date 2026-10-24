@@ -86,4 +86,10 @@ describe('validateEnv', () => {
     expect(env.S3).toMatchObject({ bucket: 'emlook', region: 'auto', forcePathStyle: false, prefix: 'prod/' });
     expect(validateEnv(base).STORAGE_DRIVER).toBe('local');
   });
+
+  it('FCM seçilince servis hesabını ister', () => {
+    expect(() => validateEnv({ ...base, PUSH_PROVIDER: 'fcm' })).toThrow('FCM_SERVICE_ACCOUNT');
+    expect(validateEnv({ ...base, PUSH_PROVIDER: 'fcm', FCM_SERVICE_ACCOUNT: '{}' }).FCM_SERVICE_ACCOUNT).toBe('{}');
+    expect(validateEnv(base).FCM_SERVICE_ACCOUNT).toBeNull();
+  });
 });

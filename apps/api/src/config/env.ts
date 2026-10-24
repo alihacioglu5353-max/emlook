@@ -38,7 +38,10 @@ export interface Env {
   /** mock: geliştirme/test · manual: yönetici elle doğrular (EİDS API entegrasyonuna kadar) */
   EIDS_PROVIDER: 'mock' | 'manual';
   MAX_LISTING_PHOTOS: number;
-  PUSH_PROVIDER: 'log' | 'memory';
+  /** log: geliştirme · memory: testler · fcm: Firebase Cloud Messaging */
+  PUSH_PROVIDER: 'log' | 'memory' | 'fcm';
+  /** Firebase servis hesabı JSON'u (ham veya base64); PUSH_PROVIDER=fcm iken zorunlu */
+  FCM_SERVICE_ACCOUNT: string | null;
   PAYMENT_PROVIDER: 'mock';
   PAYMENT_WEBHOOK_SECRET: string;
   /** Platform hizmet bedeli, on binde (500 = %5) */
@@ -107,7 +110,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
   }
 
   const push = optional(raw, 'PUSH_PROVIDER', 'log');
-  if (!['log', 'memory'].includes(push)) {
+  if (!['log', 'memory', 'fcm'].includes(push)) {
     throw new Error(`Geçersiz PUSH_PROVIDER: ${push}`);
   }
 
@@ -167,6 +170,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     EIDS_PROVIDER: eids as Env['EIDS_PROVIDER'],
     MAX_LISTING_PHOTOS: int(raw, 'MAX_LISTING_PHOTOS', 20),
     PUSH_PROVIDER: push as Env['PUSH_PROVIDER'],
+    FCM_SERVICE_ACCOUNT: push === 'fcm' ? required(raw, 'FCM_SERVICE_ACCOUNT') : null,
     PAYMENT_PROVIDER: paymentProvider as Env['PAYMENT_PROVIDER'],
     PAYMENT_WEBHOOK_SECRET:
       nodeEnv === 'production'

@@ -15,8 +15,8 @@ export interface PushResult {
 }
 
 /**
- * Push gönderim soyutlaması. Üretimde FCM (Android + iOS/APNs köprüsü)
- * bu sınıfı genişleten bir sağlayıcı olarak eklenecek.
+ * Push gönderim soyutlaması: `log` (geliştirme), `memory` (test),
+ * `fcm` (Firebase Cloud Messaging; Android + iOS/APNs, bkz. fcm.ts).
  */
 export abstract class PushProvider {
   abstract send(tokens: string[], payload: PushPayload): Promise<PushResult>;
