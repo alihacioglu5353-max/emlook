@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, EmptyState, Eyebrow, Spinner } from "@/components/ui";
+import { Alert, EmptyState, Spinner } from "@/components/ui";
 import { api, type AdminDashboard, type AdminPaymentRow, type PaymentStatus } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { formatKurus, PAYMENT_STATUS_LABEL } from "@/lib/listing";
@@ -20,9 +20,7 @@ export default function AdminPayments() {
   return (
     <div className="space-y-6">
       <div>
-        <Eyebrow>Yönetim</Eyebrow>
-        <h1 className="text-3xl font-extrabold tracking-tight">Ödemeler</h1>
-        <p className="mt-1 text-ink-soft">Ödeme sağlayıcısı şu an test modunda; gerçek tahsilat Trinkle360 bağlanınca başlar.</p>
+        <p className="text-sm text-ink-soft">Ödeme sağlayıcısı şu an test modunda; gerçek tahsilat Trinkle360 bağlanınca başlar.</p>
       </div>
       {d && (
         <div className="grid gap-3 sm:grid-cols-4">

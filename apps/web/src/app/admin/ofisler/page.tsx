@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
-import { Alert, Card, Eyebrow, Spinner } from "@/components/ui";
+import { Alert, Card, Spinner } from "@/components/ui";
 import { api, type AdminOfficeItem, type OfficeStatus } from "@/lib/api";
 import { OFFICE_STATUS_LABEL, formatDate, formatPhone } from "@/lib/format";
 
@@ -22,13 +22,11 @@ export default function AdminOffices() {
 
   return (
     <div>
-      <Eyebrow>Yönetim</Eyebrow>
-      <h1 className="text-3xl font-extrabold tracking-tight">Ofis başvuruları</h1>
-      <p className="mt-2 text-ink-soft">
+      <p className="text-sm text-ink-soft">
         Ofis unvanı ve yetki belgesi numarasının sahibin onaylı danışman bilgileriyle tutarlı olduğunu kontrol et.
       </p>
 
-      <div className="mt-8 flex flex-wrap gap-2" role="tablist">
+      <div className="mt-5 flex flex-wrap gap-2" role="tablist">
         {TABS.map((t) => (
           <button
             key={t}

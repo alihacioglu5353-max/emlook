@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 import { Pager, ReasonAction } from "@/components/admin";
 import { ListingStatusBadge } from "@/components/listing-card";
-import { Alert, Button, EmptyState, Eyebrow, Spinner } from "@/components/ui";
+import { Alert, Button, EmptyState, Spinner } from "@/components/ui";
 import { api, type AdminListingRow, type EidsStatus, type ListingStatus } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import { DEAL_LABEL, EIDS_LABEL, formatPrice, LISTING_STATUS_LABEL } from "@/lib/listing";
@@ -51,9 +51,7 @@ function AdminListings() {
   return (
     <div className="space-y-6">
       <div>
-        <Eyebrow>Yönetim</Eyebrow>
-        <h1 className="text-3xl font-extrabold tracking-tight">İlanlar</h1>
-        <p className="mt-1 text-ink-soft">Moderasyon ve EİDS elle doğrulama.</p>
+        <p className="text-sm text-ink-soft">Moderasyon ve EİDS elle doğrulama.</p>
       </div>
       <form
         onSubmit={(e: FormEvent) => {

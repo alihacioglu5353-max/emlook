@@ -23,6 +23,15 @@ describe('E9 — yönetim paneli', () => {
     await api(ayse).get('/admin/dashboard').expect(403);
     const d = await api(admin).get('/admin/dashboard').expect(200);
     expect(d.body).toMatchObject({ agents: 1, consumers: 1, verifiedAgents: 1, activeListings: 1, openReports: 0, paidVolume: 0 });
+    const ch = await api(admin).get('/admin/dashboard/charts').expect(200);
+    expect(ch.body.weekly).toHaveLength(12);
+    expect(ch.body.monthly).toHaveLength(6);
+    expect(ch.body.weekly.at(-1).listings).toBeGreaterThanOrEqual(1);
+    expect(ch.body.categories).toEqual([expect.objectContaining({ count: 1 })]);
+    expect(ch.body.topAgents[0]).toMatchObject({ fullName: 'Ayşe Yılmaz', listings: 1 });
+    expect(ch.body.latest).toHaveLength(1);
+    expect(typeof ch.body.latest[0].price).toBe('number');
+    await api(ayse).get('/admin/dashboard/charts').expect(403);
 
     const all = await api(admin).get('/admin/users').expect(200);
     expect(all.body.total).toBe(3);

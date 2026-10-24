@@ -119,6 +119,13 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
   Metin değişince `version` + `KVKK_CLARIFICATION_VERSION`/`TERMS_VERSION` birlikte güncellenir (uyuşmazsa API açılışta uyarır).
   KVKK İlke Kararı 2026/347: aydınlatma için "okudum ve anladım" (kabul değil); ticari ileti izni ayrı ve isteğe bağlı, web panel ve mobil profilden geri alınır (`PUT /me/consents/marketing`, sürüm = ticari-ileti metni).
 
+## Demo verisi ve yönetim paneli
+- `db:seed-demo` (`src/db/seed-demo.ts`, içerik `src/db/demo/data.ts`): ana hesaplar 0532 000 00 00–09, ek danışmanlar 01 01–13, alıcılar 01 21–32 ve 02 01–40.
+  Tekrar çalıştırılınca demo kullanıcılarının içeriği silinip yeniden kurulur; tarihler 12 haftaya yayılır. Üretimde çalışmaz.
+- İlan fotoğrafları Pexels'ten (ücretsiz ticari kullanım) `apps/api/demo-photos/` önbelleğine iner (git dışı); indirilemezse ilanlar fotoğrafsız kurulur.
+- Web yönetim paneli Elasoft yönetim paneli düzeninde (koyu yan menü + kırmızı logo şeridi, üst bar, metrik kartları), renkler Emlook'un: `components/admin-frame.tsx`, `components/dashboard.tsx`.
+  Özet grafikleri `GET /admin/dashboard/charts` (haftalık kayıt/ilan/ilgi/mesaj, aylık tahsilat, kategori, ilçe, onay hunisi, son etkinlik, öne çıkan danışmanlar). İkonlar `lucide-react`.
+
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
@@ -147,7 +154,7 @@ docker compose up -d          # PostgreSQL (port 5433) + Redis
 pnpm install
 pnpm --filter api db:migrate
 pnpm --filter api db:seed-locations   # il/ilçe/mahalle (bir kez)
-pnpm --filter api db:seed-demo        # her türden demo kullanıcı (0532 000 00 00–09)
+pnpm --filter api db:seed-demo        # demo verisi: 75 kullanıcı, 34 ilan + fotoğraf, eşleşme, mesaj, ödeme, şikâyet
 pnpm dev:api                  # http://localhost:3000/api/v1, Swagger: /docs
 pnpm --filter api test:e2e
 ```

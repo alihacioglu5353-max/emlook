@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, type ReactNode } from "react";
 import { api, type Me, type Role } from "@/lib/api";
 import { useUnreadMessages } from "./chat";
+import { AdminFrame } from "./admin-frame";
 import { NotificationBell } from "./notification-bell";
 import { Alert, Logo, Spinner, VerifiedIcon } from "./ui";
 
@@ -108,6 +109,15 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
       )}
     </Link>
   ));
+
+  // Yönetici alanı: Elasoft yönetim paneli düzeni (koyu yan menü + üst bar)
+  if (ready && me.role === "admin" && pathname.startsWith("/admin")) {
+    return (
+      <AdminFrame me={me} onLogout={logout}>
+        <MeContext value={{ me, reload }}>{children}</MeContext>
+      </AdminFrame>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
