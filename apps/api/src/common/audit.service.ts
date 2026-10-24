@@ -21,7 +21,12 @@ export type AuditAction =
   | 'listing.restored'
   | 'listing.eids_verified'
   | 'listing.eids_failed'
-  | 'report.dismissed';
+  | 'report.dismissed'
+  | 'auth.locked'
+  | 'password.set'
+  | 'password.changed'
+  | 'password.reset_requested'
+  | 'password.reset';
 
 @Injectable()
 export class AuditService {

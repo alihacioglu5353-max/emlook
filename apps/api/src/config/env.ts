@@ -50,6 +50,12 @@ export interface Env {
   PAYMENT_LINK_DAYS: number;
   /** Ödeme bağlantılarının açılacağı web adresi */
   PUBLIC_WEB_URL: string;
+  /** console: loga yazar · memory: testler · smtp: gerçek e-posta (parola sıfırlama vb.) */
+  MAIL_PROVIDER: 'console' | 'memory' | 'smtp';
+  SMTP: { host: string; port: number; secure: boolean; user?: string; pass?: string } | null;
+  MAIL_FROM: string;
+  /** Parola sıfırlama bağlantısının ömrü (dakika) */
+  PASSWORD_RESET_TTL_MINUTES: number;
 }
 
 const required = (raw: Record<string, unknown>, key: string): string => {
@@ -112,6 +118,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
   const push = optional(raw, 'PUSH_PROVIDER', 'log');
   if (!['log', 'memory', 'fcm'].includes(push)) {
     throw new Error(`Geçersiz PUSH_PROVIDER: ${push}`);
+  }
+
+  const mailProvider = optional(raw, 'MAIL_PROVIDER', 'console');
+  if (!['console', 'memory', 'smtp'].includes(mailProvider)) {
+    throw new Error(`Geçersiz MAIL_PROVIDER: ${mailProvider}`);
   }
 
   const paymentProvider = optional(raw, 'PAYMENT_PROVIDER', 'mock');
@@ -180,6 +191,19 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     VAT_RATE_BPS: int(raw, 'VAT_RATE_BPS', 2000),
     PAYMENT_LINK_DAYS: int(raw, 'PAYMENT_LINK_DAYS', 7),
     PUBLIC_WEB_URL: optional(raw, 'PUBLIC_WEB_URL', 'http://localhost:3001').replace(/\/$/, ''),
+    MAIL_PROVIDER: mailProvider as Env['MAIL_PROVIDER'],
+    SMTP:
+      mailProvider === 'smtp'
+        ? {
+            host: required(raw, 'SMTP_HOST'),
+            port: int(raw, 'SMTP_PORT', 587),
+            secure: optional(raw, 'SMTP_SECURE', 'false') === 'true',
+            user: optional(raw, 'SMTP_USER', '') || undefined,
+            pass: optional(raw, 'SMTP_PASS', '') || undefined,
+          }
+        : null,
+    MAIL_FROM: optional(raw, 'MAIL_FROM', 'Emlook <no-reply@emlook.app>'),
+    PASSWORD_RESET_TTL_MINUTES: int(raw, 'PASSWORD_RESET_TTL_MINUTES', 30),
   };
 
   if (env.NODE_ENV === 'production') {
@@ -192,6 +216,13 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     if (env.SMS_PROVIDER === 'console' && raw.ALLOW_CONSOLE_SMS !== 'true') {
       // Kodlar loga yazılırsa giriş güvenliği olmaz
       throw new Error('Üretimde gerçek SMS sağlayıcısı gerekli (SMS_PROVIDER=netgsm)');
+    }
+    if (env.MAIL_PROVIDER === 'memory') {
+      throw new Error('Üretimde MAIL_PROVIDER=memory kullanılamaz');
+    }
+    if (env.MAIL_PROVIDER === 'console' && raw.ALLOW_CONSOLE_MAIL !== 'true') {
+      // Sıfırlama bağlantıları loga yazılırsa hesaplar ele geçirilebilir
+      throw new Error('Üretimde gerçek e-posta sağlayıcısı gerekli (MAIL_PROVIDER=smtp)');
     }
     if (env.PAYMENT_PROVIDER === 'mock' && raw.ALLOW_MOCK_PAYMENTS !== 'true') {
       // Gerçek sağlayıcı (Trinkle360) eklenene kadar üretimde ödeme alınmaz

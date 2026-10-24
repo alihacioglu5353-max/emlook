@@ -14,6 +14,7 @@ import { DiscoverModule } from './discover/discover.module.js';
 import { FeedModule } from './feed/feed.module.js';
 import { HealthController } from './health.controller.js';
 import { LegalModule } from './legal/legal.controller.js';
+import { MailModule } from './mail/mail.service.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { MessagingModule } from './messaging/messaging.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -46,6 +47,7 @@ import { UsersModule } from './users/users.module.js';
     DbModule,
     CommonModule,
     SmsModule,
+    MailModule,
     StorageModule,
     AuthModule,
     UsersModule,

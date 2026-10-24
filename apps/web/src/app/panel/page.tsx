@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMe } from "@/components/app-shell";
 import { ConsentsCard } from "@/components/consents-card";
+import { SecurityCard } from "@/components/security-card";
 import { Alert, Card, Eyebrow, RoleBadge, StatusBadge } from "@/components/ui";
 
 export default function PanelHome() {
@@ -23,6 +24,7 @@ export default function PanelHome() {
             Akışa git →
           </Link>
         </Card>
+        <SecurityCard />
         <ConsentsCard />
       </div>
     );
@@ -101,6 +103,7 @@ export default function PanelHome() {
           {me.office ? "Ofisime git" : "Ofis bul veya aç"}
         </Link>
       </Card>
+      <SecurityCard />
       <ConsentsCard />
     </div>
   );

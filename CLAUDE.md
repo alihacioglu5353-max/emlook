@@ -119,6 +119,14 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
   Metin değişince `version` + `KVKK_CLARIFICATION_VERSION`/`TERMS_VERSION` birlikte güncellenir (uyuşmazsa API açılışta uyarır).
   KVKK İlke Kararı 2026/347: aydınlatma için "okudum ve anladım" (kabul değil); ticari ileti izni ayrı ve isteğe bağlı, web panel ve mobil profilden geri alınır (`PUT /me/consents/marketing`, sürüm = ticari-ileti metni).
 
+## Giriş: e-posta + parola
+- Telefon + SMS kodu ana yöntem (kayıt yalnızca telefonla). E-posta + parola ek giriş yöntemi: `POST /auth/password/login`
+  (aynı hata mesajı, 5 hatalı denemede 15 dk kilit, `auth.locked` denetim kaydı), `PUT /auth/password` (e-posta şart; değiştirirken mevcut parola; diğer oturumlar kapanır).
+- Parolamı unuttum: `POST /auth/password/forgot` (her durumda aynı yanıt, saatte 3 e-posta), `GET|POST /auth/password/reset` (tek kullanımlık, 30 dk, tüm oturumları kapatır).
+  Bağlantı `PUBLIC_WEB_URL/parola-yenile?token=…`. Özet: scrypt (`common/password.ts`), kural 8+ karakter, harf ve rakam.
+- E-posta: `MAIL_PROVIDER=console|memory|smtp` (`mail/mail.service.ts`, nodemailer); üretimde console yalnızca `ALLOW_CONSOLE_MAIL=true`.
+- Web: `/giris` (Telefon / E-posta sekmeleri, hukuki metinler pencere içinde), `/parola-sifirla`, `/parola-yenile`, panelde "Giriş ve güvenlik". Demo parola: `Demo2026`.
+
 ## Demo verisi ve yönetim paneli
 - `db:seed-demo` (`src/db/seed-demo.ts`, içerik `src/db/demo/data.ts`): ana hesaplar 0532 000 00 00–09, ek danışmanlar 01 01–13, alıcılar 01 21–32 ve 02 01–40.
   Tekrar çalıştırılınca demo kullanıcılarının içeriği silinip yeniden kurulur; tarihler 12 haftaya yayılır. Üretimde çalışmaz.

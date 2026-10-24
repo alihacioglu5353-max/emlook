@@ -37,6 +37,8 @@ export class UsersService {
         role: users.role,
         createdAt: users.createdAt,
         verificationStatus: agentProfiles.verificationStatus,
+        passwordHash: users.passwordHash,
+        passwordUpdatedAt: users.passwordUpdatedAt,
       })
       .from(users)
       .leftJoin(agentProfiles, eq(agentProfiles.userId, users.id))
@@ -44,9 +46,11 @@ export class UsersService {
       .limit(1);
     if (!row) throw new NotFoundException('Kullanıcı bulunamadı');
 
-    const { verificationStatus, ...user } = row;
+    const { verificationStatus, passwordHash, ...user } = row;
     return {
       ...user,
+      /** E-posta + parola ile giriş açık mı */
+      hasPassword: passwordHash !== null,
       onboardingRequired: user.role === null,
       agent:
         user.role === 'agent'

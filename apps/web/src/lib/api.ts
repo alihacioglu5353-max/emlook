@@ -24,7 +24,9 @@ async function parse<T>(res: Response): Promise<T> {
       : typeof raw === "string"
         ? raw
         : "Bir şeyler ters gitti, tekrar deneyin";
-    if (res.status === 401 && typeof window !== "undefined") {
+    // Giriş uçlarındaki 401 (hatalı parola) bir oturum sorunu değildir: yönlendirme yapılmaz
+    const authCall = res.url.includes("/api/auth/");
+    if (res.status === 401 && typeof window !== "undefined" && !authCall) {
       // Oturum yenilenemedi: tam sayfa yönlendirme önbelleği de temizler.
       const back = encodeURIComponent(window.location.pathname);
       // eslint-disable-next-line @next/next/no-location-assign-relative-destination
@@ -66,6 +68,9 @@ export interface Me {
   agent: { verificationStatus: VerificationStatus; isVerified: boolean } | null;
   office: { id: string; name: string; role: OfficeRole; status: OfficeStatus } | null;
   consents: { type: string; version: string; granted: boolean; at: string }[];
+  /** E-posta + parola ile giriş açık mı */
+  hasPassword: boolean;
+  passwordUpdatedAt: string | null;
 }
 
 export interface VerificationDoc {

@@ -78,7 +78,7 @@ export class AuthService {
       throw new ForbiddenException('Hesabınız askıya alınmış');
     }
 
-    const tokens = await this.openSession(user.id, client);
+    const tokens = await this.issueSession(user.id, client);
     return {
       ...tokens,
       user: { id: user.id, phone: user.phone, role: user.role },
@@ -133,7 +133,8 @@ export class AuthService {
       .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
   }
 
-  private async openSession(
+  /** Yeni oturum açar (OTP veya parola ile girişten sonra). */
+  async issueSession(
     userId: string,
     client: ClientInfo,
   ): Promise<TokenPair> {

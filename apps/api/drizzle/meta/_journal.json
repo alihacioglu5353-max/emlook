@@ -57,6 +57,13 @@
       "when": 1792872089608,
       "tag": "0007_e9_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792878330413,
+      "tag": "0008_auth_password",
+      "breakpoints": true
     }
   ]
 }

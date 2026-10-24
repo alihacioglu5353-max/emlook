@@ -15,6 +15,7 @@ import path from 'node:path';
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import { hashPassword } from '../common/password.js';
 import { normalizeForSearch } from '../common/text.js';
 import { validateEnv } from '../config/env.js';
 import { LEGAL_DOCS } from '../legal/legal.texts.js';
@@ -91,6 +92,20 @@ const ago = (days: number, hourJitter = true) =>
   new Date(NOW - days * DAY - (hourJitter ? Math.floor(rand() * 9) * 3_600_000 + Math.floor(rand() * 60) * 60_000 : 0));
 const after = (d: Date, minMinutes: number, maxMinutes: number) =>
   new Date(Math.min(NOW - 60_000, d.getTime() + (minMinutes + rand() * (maxMinutes - minMinutes)) * 60_000));
+
+/** Demo hesaplarının ortak parolası */
+export const DEMO_PASSWORD = 'Demo2026';
+const slug = (s: string) =>
+  s
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i').replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ö/g, 'o').replace(/ç/g, 'c')
+    .replace(/[^a-z0-9]+/g, '.')
+    .replace(/^\.|\.$/g, '');
+/** ayse.yilmaz@demo.emlook.app · ek kullanıcılarda çakışmasın diye telefonun son 3 hanesi eklenir */
+const demoEmail = (u: (typeof DEMO_USERS)[number]) =>
+  u.role === 'admin'
+    ? 'yonetici@demo.emlook.app'
+    : `${slug(u.fullName)}${u.primary ? '' : '.' + u.phone.slice(-3)}@demo.emlook.app`;
 
 const DEAL_LABEL = { sale: 'Satılık', rent: 'Kiralık' } as const;
 const CATEGORY_LABEL = {
@@ -181,9 +196,16 @@ try {
   // ---- 1. Kullanıcılar ----
   const ids = new Map<string, string>();
   const name = new Map<string, string>();
+  // Tüm demo hesaplarına aynı parola (e-posta ile giriş denemesi için)
+  const demoHash = await hashPassword(DEMO_PASSWORD);
   for (const u of DEMO_USERS) {
     const createdAt = ago(u.days);
     const values = {
+      email: demoEmail(u),
+      passwordHash: demoHash,
+      passwordUpdatedAt: createdAt,
+      failedLogins: 0,
+      lockedUntil: null,
       fullName: u.fullName,
       role: u.role,
       status: u.suspended ? ('suspended' as const) : ('active' as const),
@@ -629,9 +651,9 @@ try {
     users: await count(db.select({ n: sql<number>`count(*)::int` }).from(users).where(inArray(users.id, demoIds))),
   };
   console.log('\nDemo verisi hazır:', Object.entries(totals).map(([k, v]) => `${v} ${k}`).join(' · '));
-  console.log('\nAna hesaplar (giriş: telefon + OTP):\n');
+  console.log(`\nAna hesaplar (giriş: telefon + SMS kodu veya e-posta + parola "${DEMO_PASSWORD}"):\n`);
   for (const u of DEMO_USERS.filter((x) => x.primary)) {
-    console.log(`  ${u.phone.replace('+90', '0')}  ${u.fullName.padEnd(16)} ${u.label}`);
+    console.log(`  ${u.phone.replace('+90', '0')}  ${demoEmail(u).padEnd(32)} ${u.fullName.padEnd(16)} ${u.label}`);
   }
   console.log(`\n  + ${DEMO_USERS.length - DEMO_USERS.filter((x) => x.primary).length} ek demo kullanıcısı (0532 000 01 01–32 ve 02 01–40)\n`);
 } finally {
