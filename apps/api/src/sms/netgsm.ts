@@ -56,7 +56,7 @@ export class NetgsmSmsService extends SmsService {
       msgheader: this.config.header,
       // OTP hattı Türkçe karakter desteklemez; metinlerimiz ASCII. Normal
       // gönderimde Türkçe karakter varsa TR kodlaması istenir.
-      encoding: /[^\x00-\x7F]/.test(body) && !this.config.useOtpEndpoint ? 'TR' : 'ASCII',
+      encoding: /[^ -~\s]/.test(body) && !this.config.useOtpEndpoint ? 'TR' : 'ASCII',
       messages: [{ msg: body, no }],
     };
 

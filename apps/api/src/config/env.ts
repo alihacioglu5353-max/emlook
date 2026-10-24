@@ -18,7 +18,18 @@ export interface Env {
   SMS_PROVIDER: 'console' | 'memory' | 'netgsm';
   /** Netgsm (SMS_PROVIDER=netgsm iken zorunlu) */
   NETGSM: { userCode: string; password: string; header: string; useOtpEndpoint: boolean; baseUrl: string } | null;
+  /** local: STORAGE_DIR klasörü · s3: S3 uyumlu nesne deposu (üretimde önerilen) */
+  STORAGE_DRIVER: 'local' | 's3';
   STORAGE_DIR: string;
+  S3: {
+    bucket: string;
+    region: string;
+    endpoint?: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    forcePathStyle: boolean;
+    prefix: string;
+  } | null;
   MAX_UPLOAD_MB: number;
   CORS_ORIGINS: string[];
   KVKK_CLARIFICATION_VERSION: string;
@@ -85,6 +96,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw new Error(`Geçersiz SMS_PROVIDER: ${smsProvider}`);
   }
 
+  const storageDriver = optional(raw, 'STORAGE_DRIVER', 'local');
+  if (!['local', 's3'].includes(storageDriver)) {
+    throw new Error(`Geçersiz STORAGE_DRIVER: ${storageDriver}`);
+  }
+
   const eids = optional(raw, 'EIDS_PROVIDER', nodeEnv === 'production' ? 'manual' : 'mock');
   if (!['mock', 'manual'].includes(eids)) {
     throw new Error(`Geçersiz EIDS_PROVIDER: ${eids}`);
@@ -124,7 +140,21 @@ export function validateEnv(raw: Record<string, unknown>): Env {
             baseUrl: optional(raw, 'NETGSM_BASE_URL', 'https://api.netgsm.com.tr').replace(/\/$/, ''),
           }
         : null,
+    STORAGE_DRIVER: storageDriver as Env['STORAGE_DRIVER'],
     STORAGE_DIR: optional(raw, 'STORAGE_DIR', './uploads'),
+    S3:
+      storageDriver === 's3'
+        ? {
+            bucket: required(raw, 'S3_BUCKET'),
+            // Cloudflare R2 için "auto"
+            region: optional(raw, 'S3_REGION', 'auto'),
+            endpoint: optional(raw, 'S3_ENDPOINT', '') || undefined,
+            accessKeyId: required(raw, 'S3_ACCESS_KEY_ID'),
+            secretAccessKey: required(raw, 'S3_SECRET_ACCESS_KEY'),
+            forcePathStyle: optional(raw, 'S3_FORCE_PATH_STYLE', 'false') === 'true',
+            prefix: optional(raw, 'S3_PREFIX', '').replace(/^\/+/, ''),
+          }
+        : null,
     MAX_UPLOAD_MB: int(raw, 'MAX_UPLOAD_MB', 10),
     CORS_ORIGINS: list(raw, 'CORS_ORIGINS'),
     KVKK_CLARIFICATION_VERSION: optional(

@@ -135,11 +135,7 @@ export class AgentsService {
       });
     }
 
-    const key = await this.storage.put(
-      `verification/${userId}`,
-      file.buffer,
-      kind.ext,
-    );
+    const key = await this.storage.put(`verification/${userId}`, file.buffer, kind.ext, kind.mime);
     try {
       const [doc] = await this.db
         .insert(verificationDocuments)
@@ -267,7 +263,7 @@ export class AgentsService {
       .where(where)
       .limit(1);
     if (!doc) throw new NotFoundException('Belge bulunamadı');
-    return new StreamableFile(this.storage.stream(doc.storageKey), {
+    return new StreamableFile(await this.storage.stream(doc.storageKey), {
       type: doc.mimeType,
       length: doc.sizeBytes,
       disposition: `inline; filename*=UTF-8''${encodeURIComponent(doc.originalName)}`,

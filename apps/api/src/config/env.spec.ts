@@ -71,4 +71,19 @@ describe('validateEnv', () => {
     });
     expect(validateEnv(base).NETGSM).toBeNull();
   });
+
+  it('S3 sürücüsü kimlik bilgilerini ister; R2 için bölge varsayılanı auto', () => {
+    expect(() => validateEnv({ ...base, STORAGE_DRIVER: 's3' })).toThrow('S3_BUCKET');
+    const env = validateEnv({
+      ...base,
+      STORAGE_DRIVER: 's3',
+      S3_BUCKET: 'emlook',
+      S3_ENDPOINT: 'https://hesap.r2.cloudflarestorage.com',
+      S3_ACCESS_KEY_ID: 'k',
+      S3_SECRET_ACCESS_KEY: 's',
+      S3_PREFIX: '/prod/',
+    });
+    expect(env.S3).toMatchObject({ bucket: 'emlook', region: 'auto', forcePathStyle: false, prefix: 'prod/' });
+    expect(validateEnv(base).STORAGE_DRIVER).toBe('local');
+  });
 });

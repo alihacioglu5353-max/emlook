@@ -207,7 +207,7 @@ export class ListingsService {
     if (n >= max) {
       throw new BadRequestException({ code: 'TOO_MANY_PHOTOS', message: `En fazla ${max} fotoğraf eklenebilir` });
     }
-    const key = await this.storage.put(`listings/${id}`, file.buffer, kind.ext);
+    const key = await this.storage.put(`listings/${id}`, file.buffer, kind.ext, kind.mime);
     try {
       await this.db.insert(listingPhotos).values({
         listingId: id,
@@ -261,7 +261,7 @@ export class ListingsService {
       .where(and(eq(listingPhotos.id, photoId), eq(listingPhotos.listingId, id)))
       .limit(1);
     if (!photo) throw new NotFoundException('Fotoğraf bulunamadı');
-    return new StreamableFile(this.storage.stream(photo.storageKey), {
+    return new StreamableFile(await this.storage.stream(photo.storageKey), {
       type: photo.mimeType,
       length: photo.sizeBytes,
     });
