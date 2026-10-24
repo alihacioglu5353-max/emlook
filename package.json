@@ -1,0 +1,19 @@
+{
+  "name": "emlook",
+  "private": true,
+  "description": "Emlook — emlakçıların portföy paylaştığı, eşleştiği ve komisyonunu online tahsil ettiği sosyal ağ",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter api start:dev",
+    "dev:web": "pnpm --filter web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter api test:e2e",
+    "db:migrate": "pnpm --filter api db:migrate",
+    "db:seed": "pnpm --filter api db:seed"
+  }
+}

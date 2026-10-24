@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+uploads/
+apps/api/src/generated/
+
+# Flutter
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins*
+apps/mobile/.packages
+apps/mobile/pubspec.lock
+
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
