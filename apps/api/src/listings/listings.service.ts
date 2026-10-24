@@ -434,7 +434,7 @@ export class ListingsService {
       likedByMe: card?.likedByMe ?? false,
       savedByMe: card?.savedByMe ?? false,
       isOwner,
-      removedReason: isOwner ? listing.removedReason : undefined,
+      removedReason: isOwner || viewer.role === 'admin' ? listing.removedReason : undefined,
     };
   }
 
@@ -446,6 +446,9 @@ export class ListingsService {
     if (!row) throw new NotFoundException('İlan bulunamadı');
     if (row.ownerId === viewer.id || viewer.role === 'admin') return row;
     if (row.status !== 'active') throw new NotFoundException('İlan bulunamadı');
+    // Askıya alınan danışmanın ilanları görünmez
+    const [owner] = await this.db.select({ status: users.status }).from(users).where(eq(users.id, row.ownerId));
+    if (owner?.status !== 'active') throw new NotFoundException('İlan bulunamadı');
     const [visible] = await this.db
       .select({ id: listings.id })
       .from(listings)

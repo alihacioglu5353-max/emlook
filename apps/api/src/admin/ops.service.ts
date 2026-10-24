@@ -1,0 +1,428 @@
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { and, desc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { AuditService } from '../common/audit.service.js';
+import { isUniqueViolation } from '../common/db-errors.js';
+import { normalizeTrPhone } from '../common/phone.js';
+import { InjectDb, type Database } from '../db/db.module.js';
+import {
+  agentProfiles,
+  cities,
+  districts,
+  invoices,
+  listingReports,
+  listings,
+  paymentRequests,
+  sessions,
+  users,
+} from '../db/schema.js';
+import { ListingsService } from '../listings/listings.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
+import type {
+  AdminListingsQuery,
+  AdminPaymentsQuery,
+  AdminUsersQuery,
+  EidsDecisionDto,
+  ReportListingDto,
+  ReportsQuery,
+} from './ops.dto.js';
+
+const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+
+@Injectable()
+export class AdminOpsService {
+  constructor(
+    @InjectDb() private readonly db: Database,
+    private readonly listings: ListingsService,
+    private readonly notifications: NotificationsService,
+    private readonly audit: AuditService,
+  ) {}
+
+  // ---- Panel özeti ----
+
+  async dashboard() {
+    const { rows } = await this.db.execute<Record<string, string | number>>(sql`
+      select
+        (select count(*) from users where role = 'agent')::int as agents,
+        (select count(*) from users where role = 'consumer')::int as consumers,
+        (select count(*) from users where status = 'suspended')::int as suspended,
+        (select count(*) from users where created_at > now() - interval '7 days')::int as new_users_7d,
+        (select count(*) from agent_profiles where verification_status = 'approved')::int as verified_agents,
+        (select count(*) from agent_profiles where verification_status = 'pending')::int as pending_verifications,
+        (select count(*) from offices where status = 'pending')::int as pending_offices,
+        (select count(*) from offices where status = 'active')::int as active_offices,
+        (select count(*) from listings where status = 'active')::int as active_listings,
+        (select count(*) from listings where status = 'active' and is_demo)::int as demo_listings,
+        (select count(*) from listings where published_at > now() - interval '7 days')::int as new_listings_7d,
+        (select count(*) from listings where eids_status = 'pending')::int as pending_eids,
+        (select count(*) from listing_reports where status = 'open')::int as open_reports,
+        (select count(*) from interests)::int as interests,
+        (select count(*) from interests where status = 'accepted')::int as matches,
+        (select count(*) from messages where created_at > now() - interval '7 days')::int as messages_7d,
+        (select count(*) from payment_requests where status = 'paid')::int as paid_payments,
+        (select coalesce(sum(amount), 0) from payment_requests where status = 'paid')::bigint as paid_volume,
+        (select coalesce(sum(amount), 0) from payment_splits where kind = 'platform')::bigint as platform_revenue,
+        (select coalesce(sum(amount), 0) from payment_splits where payout_status = 'held')::bigint as held_payouts,
+        (select count(*) from invoices where status = 'pending')::int as pending_invoices
+    `);
+    const r = rows[0]!;
+    return Object.fromEntries(
+      Object.entries(r).map(([k, v]) => [k.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase()), Number(v)]),
+    );
+  }
+
+  // ---- Kullanıcılar ----
+
+  async users(q: AdminUsersQuery) {
+    const conds: SQL[] = [];
+    if (q.role) conds.push(eq(users.role, q.role));
+    if (q.status) conds.push(eq(users.status, q.status));
+    if (q.q?.trim()) {
+      const text = q.q.trim();
+      const phone = normalizeTrPhone(text);
+      conds.push(
+        or(
+          ilike(users.fullName, `%${likeEscape(text)}%`),
+          ...(phone ? [eq(users.phone, phone)] : []),
+          ilike(users.phone, `%${likeEscape(text.replace(/\D/g, '').slice(-10)) || '__none__'}%`),
+        )!,
+      );
+    }
+    const where = conds.length ? and(...conds) : undefined;
+    const [items, [{ total }]] = await Promise.all([
+      this.db
+        .select({
+          id: users.id,
+          fullName: users.fullName,
+          phone: users.phone,
+          role: users.role,
+          status: users.status,
+          verification: agentProfiles.verificationStatus,
+          createdAt: users.createdAt,
+          lastLoginAt: users.lastLoginAt,
+          activeListings: sql<number>`(select count(*)::int from listings l where l.owner_id = "users"."id" and l.status = 'active')`,
+          officeName: sql<string | null>`(
+            select o.name from office_memberships m join offices o on o.id = m.office_id
+            where m.user_id = "users"."id" and m.status = 'active' limit 1
+          )`,
+        })
+        .from(users)
+        .leftJoin(agentProfiles, eq(agentProfiles.userId, users.id))
+        .where(where)
+        .orderBy(desc(users.createdAt))
+        .limit(q.limit ?? 30)
+        .offset(q.offset ?? 0),
+      this.db.select({ total: sql<number>`count(*)::int` }).from(users).where(where),
+    ]);
+    return { items, total };
+  }
+
+  async user(id: string) {
+    const [u] = await this.db
+      .select({
+        id: users.id,
+        fullName: users.fullName,
+        phone: users.phone,
+        email: users.email,
+        role: users.role,
+        status: users.status,
+        suspendedReason: users.suspendedReason,
+        suspendedAt: users.suspendedAt,
+        createdAt: users.createdAt,
+        lastLoginAt: users.lastLoginAt,
+        verification: agentProfiles.verificationStatus,
+        licenseNumber: agentProfiles.licenseNumber,
+        businessName: agentProfiles.businessName,
+      })
+      .from(users)
+      .leftJoin(agentProfiles, eq(agentProfiles.userId, users.id))
+      .where(eq(users.id, id));
+    if (!u) throw new NotFoundException('Kullanıcı bulunamadı');
+    const { rows } = await this.db.execute<Record<string, number>>(sql`
+      select
+        (select count(*) from listings where owner_id = ${id} and status = 'active')::int as active_listings,
+        (select count(*) from listings where owner_id = ${id})::int as all_listings,
+        (select count(*) from follows where followee_id = ${id})::int as followers,
+        (select count(*) from listing_reports r join listings l on l.id = r.listing_id where l.owner_id = ${id})::int as reports_against,
+        (select count(*) from payment_requests where created_by = ${id} and status = 'paid')::int as paid_payments,
+        (select count(*) from sessions where user_id = ${id} and revoked_at is null and expires_at > now())::int as active_sessions
+    `);
+    const c = rows[0]!;
+    return {
+      ...u,
+      stats: {
+        activeListings: c.active_listings,
+        allListings: c.all_listings,
+        followers: c.followers,
+        reportsAgainst: c.reports_against,
+        paidPayments: c.paid_payments,
+        activeSessions: c.active_sessions,
+      },
+    };
+  }
+
+  /** Askıya alır: oturumlar kapanır, ilanları akış/aramadan düşer (sahibinin durumu kontrol edilir) */
+  async suspend(adminId: string, id: string, reason: string) {
+    if (id === adminId) throw new BadRequestException({ code: 'SELF', message: 'Kendi hesabınızı askıya alamazsınız' });
+    const [u] = await this.db.select({ role: users.role, status: users.status }).from(users).where(eq(users.id, id));
+    if (!u) throw new NotFoundException('Kullanıcı bulunamadı');
+    if (u.role === 'admin') throw new BadRequestException({ code: 'ADMIN', message: 'Yönetici hesabı askıya alınamaz' });
+    if (u.status === 'suspended') throw new ConflictException({ code: 'ALREADY', message: 'Hesap zaten askıda' });
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(users)
+        .set({ status: 'suspended', suspendedReason: reason.trim(), suspendedAt: new Date() })
+        .where(eq(users.id, id));
+      await tx
+        .update(sessions)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(sessions.userId, id), isNull(sessions.revokedAt)));
+      await this.audit.log({ actorId: adminId, action: 'user.suspended', targetType: 'user', targetId: id, metadata: { reason } }, tx);
+    });
+    return this.user(id);
+  }
+
+  async reactivate(adminId: string, id: string) {
+    const [u] = await this.db.select({ status: users.status }).from(users).where(eq(users.id, id));
+    if (!u) throw new NotFoundException('Kullanıcı bulunamadı');
+    if (u.status !== 'suspended') throw new ConflictException({ code: 'NOT_SUSPENDED', message: 'Hesap askıda değil' });
+    await this.db.update(users).set({ status: 'active', suspendedReason: null, suspendedAt: null }).where(eq(users.id, id));
+    await this.audit.log({ actorId: adminId, action: 'user.reactivated', targetType: 'user', targetId: id });
+    await this.notifications.notify({
+      userId: id,
+      type: 'account.reactivated',
+      title: 'Hesabın yeniden etkin',
+      body: 'Emlook hesabın yönetici tarafından yeniden etkinleştirildi.',
+    });
+    return this.user(id);
+  }
+
+  // ---- İlan moderasyonu ----
+
+  async listingsList(q: AdminListingsQuery) {
+    const conds: SQL[] = [];
+    if (q.status) conds.push(eq(listings.status, q.status));
+    if (q.eids) conds.push(eq(listings.eidsStatus, q.eids));
+    if (q.q?.trim()) {
+      const t = `%${likeEscape(q.q.trim())}%`;
+      conds.push(or(ilike(listings.title, t), ilike(users.fullName, t), ilike(listings.propertyNumber, t))!);
+    }
+    const where = conds.length ? and(...conds) : undefined;
+    const base = this.db
+      .select({
+        id: listings.id,
+        title: listings.title,
+        dealType: listings.dealType,
+        price: listings.price,
+        status: listings.status,
+        isDemo: listings.isDemo,
+        visibility: listings.visibility,
+        eidsStatus: listings.eidsStatus,
+        propertyNumber: listings.propertyNumber,
+        removedReason: listings.removedReason,
+        publishedAt: listings.publishedAt,
+        createdAt: listings.createdAt,
+        city: cities.name,
+        district: districts.name,
+        owner: { id: users.id, fullName: users.fullName, status: users.status },
+        openReports: sql<number>`(select count(*)::int from listing_reports r where r.listing_id = "listings"."id" and r.status = 'open')`,
+        licenseNumber: agentProfiles.licenseNumber,
+      })
+      .from(listings)
+      .innerJoin(users, eq(users.id, listings.ownerId))
+      .leftJoin(agentProfiles, eq(agentProfiles.userId, users.id))
+      .innerJoin(cities, eq(cities.code, listings.cityCode))
+      .innerJoin(districts, eq(districts.id, listings.districtId));
+    const [items, [{ total }]] = await Promise.all([
+      base
+        .where(where)
+        .orderBy(desc(listings.updatedAt))
+        .limit(q.limit ?? 30)
+        .offset(q.offset ?? 0),
+      this.db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(listings)
+        .innerJoin(users, eq(users.id, listings.ownerId))
+        .where(where),
+    ]);
+    return { items, total };
+  }
+
+  async removeListing(adminId: string, id: string, reason: string) {
+    const [l] = await this.db.select().from(listings).where(eq(listings.id, id));
+    if (!l) throw new NotFoundException('İlan bulunamadı');
+    if (l.status === 'removed') throw new ConflictException({ code: 'ALREADY', message: 'İlan zaten kaldırılmış' });
+    await this.db.transaction(async (tx) => {
+      await tx.update(listings).set({ status: 'removed', removedReason: reason.trim() }).where(eq(listings.id, id));
+      await tx
+        .update(listingReports)
+        .set({ status: 'resolved', resolvedBy: adminId, resolvedAt: new Date(), resolution: `İlan kaldırıldı: ${reason.trim()}` })
+        .where(and(eq(listingReports.listingId, id), eq(listingReports.status, 'open')));
+      await this.audit.log(
+        { actorId: adminId, action: 'listing.removed', targetType: 'listing', targetId: id, metadata: { reason } },
+        tx,
+      );
+      await this.notifications.notify(
+        {
+          userId: l.ownerId,
+          type: 'listing.removed',
+          title: 'İlanın yayından kaldırıldı',
+          body: `"${l.title}" yönetici tarafından kaldırıldı: ${reason.trim()}`,
+          data: { listingId: id },
+        },
+        tx,
+      );
+    });
+    return this.listings.detail(id, { id: adminId, role: 'admin' });
+  }
+
+  /** Kaldırılan ilanı sahibine geri verir (pasif; sahibi tekrar yayına alabilir) */
+  async restoreListing(adminId: string, id: string) {
+    const [l] = await this.db.select().from(listings).where(eq(listings.id, id));
+    if (!l) throw new NotFoundException('İlan bulunamadı');
+    if (l.status !== 'removed') throw new ConflictException({ code: 'NOT_REMOVED', message: 'İlan kaldırılmış değil' });
+    await this.db.update(listings).set({ status: 'passive', removedReason: null }).where(eq(listings.id, id));
+    await this.audit.log({ actorId: adminId, action: 'listing.restored', targetType: 'listing', targetId: id });
+    await this.notifications.notify({
+      userId: l.ownerId,
+      type: 'listing.restored',
+      title: 'İlanın geri yüklendi',
+      body: `"${l.title}" pasif olarak geri yüklendi; yeniden yayına alabilirsin.`,
+      data: { listingId: id },
+    });
+    return this.listings.detail(id, { id: adminId, role: 'admin' });
+  }
+
+  /** EİDS elle doğrulama (manual sağlayıcı) */
+  async decideEids(adminId: string, id: string, dto: EidsDecisionDto) {
+    const [l] = await this.db.select().from(listings).where(eq(listings.id, id));
+    if (!l) throw new NotFoundException('İlan bulunamadı');
+    if (!l.propertyNumber) throw new BadRequestException({ code: 'NO_PROPERTY_NUMBER', message: 'İlanda taşınmaz numarası yok' });
+    if (l.eidsStatus === 'verified') throw new ConflictException({ code: 'ALREADY', message: 'EİDS zaten doğrulanmış' });
+    const ok = dto.decision === 'verified';
+    await this.db
+      .update(listings)
+      .set({
+        eidsStatus: dto.decision,
+        eidsMessage: dto.message?.trim() || (ok ? 'Yetki yönetici tarafından doğrulandı' : 'Yetki doğrulanamadı'),
+        eidsReference: ok ? `MANUAL-${new Date().toISOString().slice(0, 10)}` : null,
+        eidsCheckedAt: new Date(),
+      })
+      .where(eq(listings.id, id));
+    await this.audit.log({
+      actorId: adminId,
+      action: ok ? 'listing.eids_verified' : 'listing.eids_failed',
+      targetType: 'listing',
+      targetId: id,
+      metadata: { message: dto.message ?? null },
+    });
+    await this.notifications.notify({
+      userId: l.ownerId,
+      type: ok ? 'listing.eids_verified' : 'listing.eids_failed',
+      title: ok ? 'EİDS doğrulandı' : 'EİDS doğrulanamadı',
+      body: ok ? `"${l.title}" yayına alınabilir.` : `"${l.title}": ${dto.message?.trim() || 'taşınmaz numarasını kontrol edin'}`,
+      data: { listingId: id },
+    });
+    return this.listings.detail(id, { id: adminId, role: 'admin' });
+  }
+
+  // ---- Şikâyetler ----
+
+  async report(viewer: { id: string; role: 'agent' | 'consumer' | 'admin' | null }, listingId: string, dto: ReportListingDto) {
+    const l = await this.listings.assertCanView(viewer, listingId);
+    if (l.ownerId === viewer.id) throw new BadRequestException({ code: 'OWN_LISTING', message: 'Kendi ilanını şikâyet edemezsin' });
+    try {
+      const [row] = await this.db
+        .insert(listingReports)
+        .values({ listingId, reporterId: viewer.id, reason: dto.reason, note: dto.note?.trim() || null })
+        .returning({ id: listingReports.id, status: listingReports.status });
+      return row;
+    } catch (e) {
+      if (isUniqueViolation(e)) {
+        throw new ConflictException({ code: 'ALREADY_REPORTED', message: 'Bu ilanı zaten bildirdin; inceleniyor' });
+      }
+      throw e;
+    }
+  }
+
+  async reports(q: ReportsQuery) {
+    const reporter = alias(users, 'reporter');
+    const owner = alias(users, 'owner');
+    const status = q.status ?? 'open';
+    const items = await this.db
+      .select({
+        id: listingReports.id,
+        reason: listingReports.reason,
+        note: listingReports.note,
+        status: listingReports.status,
+        resolution: listingReports.resolution,
+        createdAt: listingReports.createdAt,
+        resolvedAt: listingReports.resolvedAt,
+        listing: { id: listings.id, title: listings.title, status: listings.status },
+        owner: { id: owner.id, fullName: owner.fullName },
+        reporter: { id: reporter.id, fullName: reporter.fullName, role: reporter.role },
+        sameListingOpen: sql<number>`(select count(*)::int from listing_reports r2 where r2.listing_id = "listing_reports"."listing_id" and r2.status = 'open')`,
+      })
+      .from(listingReports)
+      .innerJoin(listings, eq(listings.id, listingReports.listingId))
+      .innerJoin(owner, eq(owner.id, listings.ownerId))
+      .innerJoin(reporter, eq(reporter.id, listingReports.reporterId))
+      .where(eq(listingReports.status, status))
+      .orderBy(desc(listingReports.createdAt))
+      .limit(q.limit ?? 30)
+      .offset(q.offset ?? 0);
+    return { items };
+  }
+
+  async dismissReport(adminId: string, id: string, note?: string) {
+    const [r] = await this.db.select().from(listingReports).where(eq(listingReports.id, id));
+    if (!r) throw new NotFoundException('Şikâyet bulunamadı');
+    if (r.status !== 'open') throw new ConflictException({ code: 'CLOSED', message: 'Şikâyet zaten kapatılmış' });
+    await this.db
+      .update(listingReports)
+      .set({ status: 'dismissed', resolvedBy: adminId, resolvedAt: new Date(), resolution: note?.trim() || 'Sorun bulunmadı' })
+      .where(eq(listingReports.id, id));
+    await this.audit.log({ actorId: adminId, action: 'report.dismissed', targetType: 'listing_report', targetId: id });
+    return { id, status: 'dismissed' as const };
+  }
+
+  // ---- Ödemeler ----
+
+  async payments(q: AdminPaymentsQuery) {
+    const seller = alias(users, 'seller');
+    const buyer = alias(users, 'buyer');
+    const where = q.status ? eq(paymentRequests.status, q.status) : undefined;
+    const items = await this.db
+      .select({
+        id: paymentRequests.id,
+        status: paymentRequests.status,
+        amount: paymentRequests.amount,
+        description: paymentRequests.description,
+        payerName: paymentRequests.payerName,
+        platformFee: sql<number>`round(${paymentRequests.amount} * ${paymentRequests.platformFeeBps} / 10000.0)::bigint`,
+        buyerShare: paymentRequests.buyerShare,
+        provider: paymentRequests.provider,
+        providerPaymentId: paymentRequests.providerPaymentId,
+        createdAt: paymentRequests.createdAt,
+        paidAt: paymentRequests.paidAt,
+        seller: { id: seller.id, fullName: seller.fullName },
+        buyerAgent: { id: buyer.id, fullName: buyer.fullName },
+        invoiceStatus: invoices.status,
+      })
+      .from(paymentRequests)
+      .innerJoin(seller, eq(seller.id, paymentRequests.createdBy))
+      .leftJoin(buyer, eq(buyer.id, paymentRequests.buyerAgentId))
+      .leftJoin(invoices, eq(invoices.requestId, paymentRequests.id))
+      .where(where)
+      .orderBy(desc(paymentRequests.createdAt))
+      .limit(q.limit ?? 30)
+      .offset(q.offset ?? 0);
+    return {
+      items: items.map((i) => ({
+        ...i,
+        platformFee: Number(i.platformFee),
+        buyerAgent: i.buyerAgent?.id ? i.buyerAgent : null,
+      })),
+    };
+  }
+}
