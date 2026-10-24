@@ -94,11 +94,12 @@ class _VerificationScreenState extends State<VerificationScreen> {
   }
 
   Future<void> _upload() async {
-    final picked = await FilePicker.platform.pickFiles(
+    // İptal edilirse boş liste döner.
+    final picked = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
     );
-    final file = picked?.files.single;
+    final file = picked.isEmpty ? null : picked.first;
     if (file?.path == null) return;
 
     setState(() => _uploading = true);
