@@ -23,6 +23,7 @@ class Me {
     this.officeName,
     this.officeRole,
     this.officeActive = false,
+    this.marketingConsent = false,
   });
 
   final String id;
@@ -40,6 +41,9 @@ class Me {
   final OfficeRole? officeRole;
   final bool officeActive;
 
+  /// Ticari elektronik ileti izni (en son rıza kaydı)
+  final bool marketingConsent;
+
   bool get isAgent => role == 'agent';
   bool get isVerified => verificationStatus == VerificationStatus.approved;
   String get firstName => (fullName ?? '').split(' ').first;
@@ -47,6 +51,8 @@ class Me {
   factory Me.fromJson(Map<String, dynamic> j) {
     final agent = j['agent'] as Map<String, dynamic>?;
     final office = j['office'] as Map<String, dynamic>?;
+    final consents = (j['consents'] as List<dynamic>? ?? const []).cast<Map<String, dynamic>>();
+    final marketing = consents.where((c) => c['type'] == 'marketing').firstOrNull;
     return Me(
       id: j['id'] as String,
       phone: j['phone'] as String,
@@ -59,6 +65,7 @@ class Me {
       officeName: office?['name'] as String?,
       officeRole: office == null ? null : OfficeRole.parse(office['role']),
       officeActive: office?['status'] == 'active',
+      marketingConsent: marketing?['granted'] as bool? ?? false,
     );
   }
 }

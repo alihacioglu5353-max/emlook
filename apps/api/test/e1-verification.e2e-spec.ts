@@ -1,4 +1,5 @@
 import { auditLogs, consents } from '../src/db/schema.js';
+import { LEGAL_DOCS } from '../src/legal/legal.texts.js';
 import {
   bearer,
   createTestApp,
@@ -97,6 +98,7 @@ describe('E1 — kayıt, danışman başvurusu ve admin onayı', () => {
         (c: { type: string }) => c.type === 'marketing',
       );
       expect(marketing.granted).toBe(false);
+      expect(marketing.version).toBe(LEGAL_DOCS['ticari-ileti'].version);
     });
   });
 

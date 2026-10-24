@@ -97,6 +97,13 @@ class Session extends ChangeNotifier {
     await refreshUnread();
   }
 
+  /// Ticari ileti iznini verir veya geri alır.
+  Future<void> setMarketingConsent(bool granted) async {
+    final res = await api.put<Map<String, dynamic>>('/me/consents/marketing', data: {'granted': granted});
+    me = Me.fromJson(res);
+    notifyListeners();
+  }
+
   Future<void> refreshUnread() async {
     try {
       final res = await api.get<Map<String, dynamic>>('/notifications/unread-count');

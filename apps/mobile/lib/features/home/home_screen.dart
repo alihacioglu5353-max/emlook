@@ -72,6 +72,8 @@ class HomeScreen extends StatelessWidget {
                   (Icons.notifications_none_rounded, 'Bildirimler', '/bildirimler'),
                   if (me.isAgent) (Icons.person_search_outlined, 'Profilim (herkese görünen)', '/danisman/${me.id}'),
                 ]),
+                const SizedBox(height: 16),
+                _ConsentsCard(session: session, granted: me.marketingConsent),
               ],
             ),
           ),
@@ -218,6 +220,56 @@ class _ConsumerCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Ticari ileti izni ve hukuki metinler (aydınlatma metni "Profil bölümünden" geri alınabileceğini söyler).
+class _ConsentsCard extends StatefulWidget {
+  const _ConsentsCard({required this.session, required this.granted});
+  final Session session;
+  final bool granted;
+
+  @override
+  State<_ConsentsCard> createState() => _ConsentsCardState();
+}
+
+class _ConsentsCardState extends State<_ConsentsCard> {
+  bool _busy = false;
+
+  Future<void> _toggle(bool v) async {
+    setState(() => _busy = true);
+    try {
+      await widget.session.setMarketingConsent(v);
+    } catch (e) {
+      if (mounted) showError(context, e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Column(children: [
+          SwitchListTile(
+            value: widget.granted,
+            onChanged: _busy ? null : _toggle,
+            activeThumbColor: EmColors.brand,
+            title: const Text('Ticari elektronik ileti'),
+            subtitle: const Text('Kampanya ve duyuruları SMS, e-posta ve bildirimle al'),
+          ),
+          for (final (slug, label) in const [
+            ('kvkk', 'KVKK Aydınlatma Metni'),
+            ('kosullar', 'Kullanım Koşulları'),
+            ('ticari-ileti', 'Ticari İleti Metni'),
+          ]) ...[
+            const Divider(height: 1, indent: 16, color: EmColors.line),
+            ListTile(
+              title: Text(label),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/yasal/$slug'),
+            ),
+          ],
+        ]),
+      );
 }
 
 class _Menu extends StatelessWidget {

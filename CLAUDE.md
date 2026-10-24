@@ -24,7 +24,7 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - Admin: bekleyen başvuruları listeler, belgeyi görür, onaylar/reddeder (gerekçeli). Onaylı danışman rozeti `verification_status = approved`.
 - Oturum: kısa ömürlü JWT erişim belirteci (`sub`, `sid`) + dönen (rotation) yenileme belirteci; DB'de yalnızca SHA-256 özeti.
   `JwtAuthGuard` her istekte oturum ve kullanıcı durumunu DB'den kontrol eder (çıkış/askıya alma anında etkili).
-- OTP: HMAC-SHA256 özet, 3 dk ömür, 5 deneme, 60 sn yeniden gönderim, saatte 5 kod. SMS sağlayıcısı soyut (`console`, `memory`; üretim için Netgsm/İleti Merkezi eklenecek).
+- OTP: HMAC-SHA256 özet, 3 dk ömür, 5 deneme, 60 sn yeniden gönderim, saatte 5 kod. SMS sağlayıcısı soyut (`console`, `memory`, `netgsm`); gönderim hatasında kod silinir, 503 `SMS_FAILED`.
 - Denetim kaydı: onay/ret/onboarding işlemleri `audit_logs` tablosuna yazılır.
 
 ## E2 tasarımı (ofis hesabı)
@@ -82,7 +82,7 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - `GET /conversations` (son mesaj, okunmamış), `/conversations/unread`, `/with/:userId`, `POST /conversations {userId, listingId?, text?}`,
   `GET /:id/messages?cursor=|after=` (yoklama), `POST /:id/messages`, `POST /:id/read`. Eşleşmede `onMatch` konuşma + sistem mesajı.
 - Gerçek zamanlı yok: web 4 sn'de bir `after` ile yoklar, liste 15 sn, rozet 30 sn. (Ölçek gelince SSE/WebSocket.)
-- `push/`: `PushProvider` (`log` | `memory`; FCM eklenecek), `/me/devices` kayıt/silme, geçersiz belirteç temizliği.
+- `push/`: `PushProvider` (`log` | `memory` | `fcm`), `/me/devices` kayıt/silme, geçersiz belirteç temizliği.
   `NotificationsService.notify` ve her mesaj `PushService.dispatch` ile arka planda push gönderir (testte `flush()`).
 - İmleç notu: JS tarihi ms, Postgres µs → zaman imleçli sorgularda sütun `date_trunc('milliseconds', …)`.
 - Eşzamanlılık: `isConcurrencyConflict` (23505, 40P01, 40001) → 409 `CONCURRENT_CHANGE`.
@@ -110,6 +110,15 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - `/admin/payments?status` (platform bedeli, fatura durumu). Tüm işlemler `audit_logs`'a yazılır.
 - Web: `/admin` özet, `/admin/basvurular`, `/ofisler`, `/kullanicilar(/[id])`, `/ilanlar`, `/sikayetler`, `/odemeler`; ilan detayında "Bu ilanı şikâyet et".
 
+## Sağlayıcılar ve hukuki metinler
+- **SMS:** `SMS_PROVIDER=netgsm` (`NETGSM_USERCODE/PASSWORD/HEADER`, `NETGSM_USE_OTP`); üretimde `console` yalnızca `ALLOW_CONSOLE_SMS=true` ile.
+- **Depolama:** `STORAGE_DRIVER=local|s3` (AWS S3, Cloudflare R2, MinIO; `S3_*`). Dosyalar herkese açık URL ile sunulmaz, uç noktalar akıtır.
+- **Push:** `PUSH_PROVIDER=fcm` + `FCM_SERVICE_ACCOUNT` (ham veya base64 JSON); HTTP v1, geçersiz belirteçler silinir. Mobilde Firebase kurulumu (google-services.json) bekliyor.
+- **Hukuki metinler tek kaynak:** `apps/api/src/legal/legal.texts.ts` → `GET /legal`, `GET /legal/:slug` (`kvkk`, `kosullar`, `ticari-ileti`).
+  Web `/kvkk`, `/kosullar`, `/ticari-ileti` (istek anında API'den), mobil `/yasal/:slug`. Şu an **taslak**: [ ] alanları ve "HUKUK NOTU"ları hukukçu tamamlamalı.
+  Metin değişince `version` + `KVKK_CLARIFICATION_VERSION`/`TERMS_VERSION` birlikte güncellenir (uyuşmazsa API açılışta uyarır).
+  KVKK İlke Kararı 2026/347: aydınlatma için "okudum ve anladım" (kabul değil); ticari ileti izni ayrı ve isteğe bağlı, web panel ve mobil profilden geri alınır (`PUT /me/consents/marketing`, sürüm = ticari-ileti metni).
+
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
@@ -122,14 +131,15 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - **E7 tamam (API, web):** konuşmalar, ilan kartı paylaşımı, okunmamış, eşleşme konuşması, push soyutlaması ve cihaz kaydı. Toplam 51 e2e testi.
 - **E8 tamam (API, web; test sağlayıcısıyla):** IBAN hesabı, ödeme talebi ve bağlantısı, split, imzalı webhook, fatura kaydı. Toplam 55 e2e testi.
 - **E9 tamam (API, web):** yönetim özeti, kullanıcı askıya alma, ilan moderasyonu ve şikâyetler, EİDS elle doğrulama, ödeme listesi. Toplam 60 e2e + 32 birim testi.
+- **Mobil E3–E8 tamam:** alt menülü kabuk (Akış/Keşfet/Ara/Mesajlar/Profil), portföy, ilan detay, keşfet, arama, talepler, mesajlar, ödemeler (CI'da analyze + test yeşil).
+- **Sağlayıcılar tamam:** Netgsm SMS, S3 depolama, FCM push. **Hukuki metinler** taslak olarak yayında (62 e2e + 54 birim testi).
 - **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
-1. Mobil: E3–E8 ekranları (portföy, akış, keşfet, arama, talepler, mesajlar, ödemeler), sonra bilgisayarda `flutter analyze/test` ve emülatör
-2. Gerçek SMS sağlayıcısı (Netgsm / İleti Merkezi) ve S3 uyumlu depolama sürücüsü
-3. KVKK aydınlatma ve kullanım koşulları nihai metinleri (şu an yer tutucu)
-4. FCM sağlayıcısı (`PushProvider`) — Firebase projesi açılınca
+1. Bilgisayarda mobil doğrulama: `flutter pub get`, `flutter analyze`, `flutter test`, emülatörde uçtan uca deneme
+2. Hukuk danışmanı incelemesi → metinlerde `draft: false`, şirket bilgileri
+3. Firebase projesi + mobil push kaydı; Netgsm hesabı ve başlık onayı; S3/R2 kovası
 
 ## Komutlar
 ```
