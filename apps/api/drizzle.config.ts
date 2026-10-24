@@ -6,7 +6,7 @@ export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgres://emlook:emlook@localhost:5432/emlook',
+    url: process.env.DATABASE_URL ?? 'postgres://emlook:emlook@localhost:5433/emlook',
   },
   strict: true,
 });

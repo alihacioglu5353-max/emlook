@@ -10,7 +10,7 @@ import path from 'node:path';
 process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ??
-  'postgres://emlook:emlook@localhost:5432/emlook_test';
+  'postgres://emlook:emlook@localhost:5433/emlook_test';
 process.env.JWT_ACCESS_SECRET = 'test-jwt-secret';
 process.env.OTP_SECRET = 'test-otp-secret';
 process.env.SMS_PROVIDER = 'memory';

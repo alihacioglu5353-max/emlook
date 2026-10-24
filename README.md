@@ -18,7 +18,7 @@ Emlakçıların portföy paylaştığı, eşleştiği ve komisyonunu online tahs
 
 ```bash
 pnpm install
-docker compose up -d                 # PostgreSQL 16 + PostGIS, Redis
+docker compose up -d                 # PostgreSQL 16 + PostGIS (port 5433), Redis
 
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
