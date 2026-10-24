@@ -41,6 +41,8 @@ describe('validateEnv', () => {
       NETGSM_USERCODE: '8501234567',
       NETGSM_PASSWORD: 'parola',
       NETGSM_HEADER: 'EMLOOK',
+      MAIL_PROVIDER: 'smtp',
+      SMTP_HOST: 'smtp.example.com',
     };
     expect(() => validateEnv(prod)).toThrow('en az 32');
     const strong = { ...prod, JWT_ACCESS_SECRET: long, OTP_SECRET: long };
@@ -50,6 +52,10 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...strong, SMS_PROVIDER: 'console' })).toThrow('gerçek SMS');
     expect(validateEnv({ ...strong, SMS_PROVIDER: 'console', ALLOW_CONSOLE_SMS: 'true' }).SMS_PROVIDER).toBe('console');
     expect(validateEnv(strong).PLATFORM_FEE_BPS).toBe(500);
+    expect(() => validateEnv({ ...strong, MAIL_PROVIDER: 'console' })).toThrow('gerçek e-posta');
+    expect(() => validateEnv({ ...strong, MAIL_PROVIDER: 'memory' })).toThrow('MAIL_PROVIDER=memory');
+    expect(validateEnv(strong).SMTP).toMatchObject({ host: 'smtp.example.com', port: 587, secure: false });
+    expect(() => validateEnv({ ...strong, SMTP_HOST: '' })).toThrow('SMTP_HOST');
   });
 
   it('Netgsm seçilince kimlik bilgilerini ister ve varsayılanları doldurur', () => {

@@ -41,3 +41,44 @@ body {
   outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
+
+/* ---- Giriş ekranı hareketleri (yavaş, dikkat dağıtmayan) ---- */
+@keyframes auth-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(60px, -40px, 0) scale(1.08); }
+  66% { transform: translate3d(-30px, 30px, 0) scale(0.95); }
+}
+@keyframes auth-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes auth-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes auth-pan {
+  to { background-position: 56px 56px; }
+}
+@keyframes auth-shine {
+  to { background-position: -200% 0; }
+}
+.auth-blob { animation: auth-drift 18s ease-in-out infinite; }
+.auth-blob-2 { animation-duration: 24s; animation-direction: reverse; }
+.auth-grid { animation: auth-pan 12s linear infinite; }
+.auth-float { animation: auth-float 6s ease-in-out infinite; }
+.auth-float-2 { animation-delay: -2s; }
+.auth-float-3 { animation-delay: -4s; }
+.auth-rise { animation: auth-rise 0.7s ease-out both; }
+.auth-rise-2 { animation-delay: 0.08s; }
+.auth-rise-3 { animation-delay: 0.16s; }
+.auth-shine {
+  background: linear-gradient(90deg, #fffdfb 0%, #fffdfb 40%, #f08a99 50%, #fffdfb 60%, #fffdfb 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: auth-shine 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-blob, .auth-grid, .auth-float, .auth-rise, .auth-shine { animation: none; }
+}

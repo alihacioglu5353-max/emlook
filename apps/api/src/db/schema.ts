@@ -46,9 +46,32 @@ export const users = pgTable('users', {
   suspendedReason: text('suspended_reason'),
   suspendedAt: timestamp('suspended_at', { withTimezone: true }),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  /** E-posta ile giriş: scrypt özeti (parola hiç saklanmaz); null = parola yok */
+  passwordHash: text('password_hash'),
+  passwordUpdatedAt: timestamp('password_updated_at', { withTimezone: true }),
+  /** Art arda hatalı parola denemesi; eşik aşılınca hesap kısa süre kilitlenir */
+  failedLogins: integer('failed_logins').notNull().default(0),
+  lockedUntil: timestamp('locked_until', { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
+
+/** Parola sıfırlama bağlantıları: tek kullanımlık, kısa ömürlü; yalnızca SHA-256 özeti saklanır */
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull().unique(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    ip: text('ip'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('password_reset_tokens_user_idx').on(t.userId, t.createdAt)],
+);
 
 export const verificationStatus = pgEnum('verification_status', [
   'draft',

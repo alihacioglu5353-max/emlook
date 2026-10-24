@@ -1,10 +1,15 @@
 "use client";
 
+import { Mail, Smartphone } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { LegalLink } from "@/components/legal-dialog";
+import { PasswordInput } from "@/components/password-input";
 import { Alert, Button, Field, Input } from "@/components/ui";
 import { api, ApiError, type Me } from "@/lib/api";
 
+type Method = "phone" | "email";
 type Step = "phone" | "code";
 
 /** Yalnızca site içi göreli adreslere dönülür (açık yönlendirmeyi önler). */
@@ -15,6 +20,65 @@ function safeReturn(value: string | null) {
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
+  // ?yontem=eposta ile (ör. parola yenilendikten sonra) e-posta sekmesi açılır
+  const [method, setMethod] = useState<Method>(params.get("yontem") === "eposta" ? "email" : "phone");
+  const notice = params.get("yenilendi") ? "Parolan yenilendi. Yeni parolanla giriş yapabilirsin." : null;
+
+  async function finish(onboardingRequired: boolean) {
+    if (onboardingRequired) {
+      router.replace("/kayit");
+      return;
+    }
+    const me = await api<Me>("/me");
+    router.replace(safeReturn(params.get("donus")) ?? (me.role === "admin" ? "/admin" : "/panel"));
+  }
+
+  return (
+    <div>
+      <h2 className="text-3xl font-extrabold tracking-tight">Giriş yap</h2>
+      <p className="mt-2 text-ink-soft">Emlook hesabına telefonun veya e-postanla gir.</p>
+
+      <div role="tablist" aria-label="Giriş yöntemi" className="mt-7 grid grid-cols-2 rounded-xl border border-line bg-paper p-1">
+        {(
+          [
+            ["phone", "Telefon ile", Smartphone],
+            ["email", "E-posta ile", Mail],
+          ] as const
+        ).map(([m, label, Icon]) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            id={`tab-${m}`}
+            aria-selected={method === m}
+            aria-controls={`panel-${m}`}
+            onClick={() => setMethod(m)}
+            className={`flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-bold transition ${
+              method === m ? "bg-surface text-ink shadow-sm" : "text-ink-soft hover:text-ink"
+            }`}
+          >
+            <Icon className="h-4 w-4" aria-hidden />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {notice && (
+        <div className="mt-5">
+          <Alert tone="ok">{notice}</Alert>
+        </div>
+      )}
+
+      <div className="mt-6" role="tabpanel" id={`panel-${method}`} aria-labelledby={`tab-${method}`}>
+        {method === "phone" ? <PhoneLogin onDone={finish} /> : <EmailLogin onDone={finish} onUsePhone={() => setMethod("phone")} />}
+      </div>
+
+      <LegalNotice />
+    </div>
+  );
+}
+
+function PhoneLogin({ onDone }: { onDone: (onboardingRequired: boolean) => Promise<void> }) {
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -34,9 +98,7 @@ export function LoginForm() {
     setError(null);
     setBusy(true);
     try {
-      const res = await api<{ resendInSeconds: number }>("/api/auth/otp/request", {
-        json: { phone },
-      });
+      const res = await api<{ resendInSeconds: number }>("/api/auth/otp/request", { json: { phone } });
       setStep("code");
       setResendIn(res.resendInSeconds);
       setTimeout(() => codeRef.current?.focus(), 50);
@@ -56,15 +118,8 @@ export function LoginForm() {
     setError(null);
     setBusy(true);
     try {
-      const res = await api<{ onboardingRequired: boolean }>("/api/auth/otp/verify", {
-        json: { phone, code },
-      });
-      if (res.onboardingRequired) {
-        router.replace("/kayit");
-        return;
-      }
-      const me = await api<Me>("/me");
-      router.replace(safeReturn(params.get("donus")) ?? (me.role === "admin" ? "/admin" : "/panel"));
+      const res = await api<{ onboardingRequired: boolean }>("/api/auth/otp/verify", { json: { phone, code } });
+      await onDone(res.onboardingRequired);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setCode("");
@@ -74,15 +129,8 @@ export function LoginForm() {
 
   if (step === "phone") {
     return (
-      <form onSubmit={sendCode} className="space-y-6">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight">Giriş yap</h2>
-          <p className="mt-2 text-ink-soft">
-            Cep telefonuna tek kullanımlık bir kod göndereceğiz. Hesabın yoksa aynı adımla
-            oluşturulur.
-          </p>
-        </div>
-        <Field label="Cep telefonu">
+      <form onSubmit={sendCode} className="space-y-5">
+        <Field label="Cep telefonu" hint="Tek kullanımlık bir kod göndereceğiz. Hesabın yoksa aynı adımla oluşturulur.">
           <Input
             type="tel"
             inputMode="tel"
@@ -103,25 +151,21 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={verify} className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-extrabold tracking-tight">Kodu gir</h2>
-        <p className="mt-2 text-ink-soft">
-          <span className="font-semibold text-ink">{phone}</span> numarasına gelen 6 haneli kodu
-          yaz.{" "}
-          <button
-            type="button"
-            className="font-semibold text-brand underline-offset-2 hover:underline"
-            onClick={() => {
-              setStep("phone");
-              setCode("");
-              setError(null);
-            }}
-          >
-            Numarayı değiştir
-          </button>
-        </p>
-      </div>
+    <form onSubmit={verify} className="space-y-5">
+      <p className="text-sm text-ink-soft">
+        <span className="font-semibold text-ink">{phone}</span> numarasına gelen 6 haneli kodu yaz.{" "}
+        <button
+          type="button"
+          className="font-semibold text-brand underline-offset-2 hover:underline"
+          onClick={() => {
+            setStep("phone");
+            setCode("");
+            setError(null);
+          }}
+        >
+          Numarayı değiştir
+        </button>
+      </p>
       <Field label="Doğrulama kodu">
         <Input
           ref={codeRef}
@@ -144,15 +188,106 @@ export function LoginForm() {
         {resendIn > 0 ? (
           <>Yeni kod için {resendIn} sn</>
         ) : (
-          <button
-            type="button"
-            className="font-semibold text-ink hover:text-brand"
-            onClick={() => sendCode()}
-          >
+          <button type="button" className="font-semibold text-ink hover:text-brand" onClick={() => sendCode()}>
             Kodu tekrar gönder
           </button>
         )}
       </p>
     </form>
+  );
+}
+
+function EmailLogin({ onDone, onUsePhone }: { onDone: (onboardingRequired: boolean) => Promise<void>; onUsePhone: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<{ message: string; code?: string } | null>(null);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      const res = await api<{ onboardingRequired: boolean }>("/api/auth/password/login", { json: { email, password } });
+      await onDone(res.onboardingRequired);
+    } catch (err) {
+      setError(err instanceof ApiError ? { message: err.message, code: err.code } : { message: String(err) });
+      setPassword("");
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-5">
+      <Field label="E-posta">
+        <Input
+          type="email"
+          inputMode="email"
+          autoComplete="username"
+          placeholder="ornek@ofisiniz.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoFocus
+        />
+      </Field>
+      <div>
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <label htmlFor="login-password" className="text-sm font-semibold text-ink">
+            Parola
+          </label>
+          <Link href={`/parola-sifirla${email ? `?eposta=${encodeURIComponent(email)}` : ""}`} className="text-sm font-semibold text-brand hover:underline">
+            Parolamı unuttum
+          </Link>
+        </div>
+        <PasswordInput
+          id="login-password"
+          autoComplete="current-password"
+          placeholder="Parolan"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+      </div>
+      {error && (
+        <Alert tone="error">
+          {error.message}
+          {error.code === "INVALID_CREDENTIALS" && (
+            <span className="mt-1 block text-ink-soft">
+              Henüz parola belirlemediysen telefonla giriş yapıp <strong>Panel › Giriş ve güvenlik</strong> bölümünden
+              belirleyebilir ya da &quot;Parolamı unuttum&quot; ile oluşturabilirsin.
+            </span>
+          )}
+        </Alert>
+      )}
+      <Button type="submit" loading={busy} className="w-full">
+        Giriş yap
+      </Button>
+      <p className="text-center text-sm text-ink-soft">
+        Hesabın yok mu?{" "}
+        <button type="button" onClick={onUsePhone} className="font-semibold text-ink hover:text-brand">
+          Telefonla kayıt ol
+        </button>
+      </p>
+    </form>
+  );
+}
+
+/** Giriş ekranındaki hukuki bilgilendirme: metinler pencere içinde okunabilir */
+function LegalNotice() {
+  const link = "font-semibold text-ink underline decoration-line underline-offset-2 hover:decoration-ink";
+  return (
+    <div className="mt-8 rounded-xl border border-line bg-paper/70 p-4 text-xs leading-relaxed text-ink-soft">
+      <p>
+        Devam ederek <LegalLink slug="kosullar" className={link}>Kullanım Koşulları</LegalLink>&apos;nı kabul etmiş olursun.
+        Kişisel verilerinin hangi amaçla ve hukuki sebeple işlendiğini{" "}
+        <LegalLink slug="kvkk" className={link}>KVKK Aydınlatma Metni</LegalLink>&apos;nde bulabilirsin.
+      </p>
+      <p className="mt-2">
+        Kampanya ve duyuru iletileri yalnızca izin verirsen gönderilir; izni dilediğin zaman geri alabilirsin (
+        <LegalLink slug="ticari-ileti" className={link}>Ticari Elektronik İleti</LegalLink>).
+      </p>
+      <p className="mt-2">Oturumun şifreli bağlantıyla korunur; parolan yalnızca tek yönlü özet olarak saklanır.</p>
+    </div>
   );
 }
