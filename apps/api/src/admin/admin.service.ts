@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, count, desc, eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq, ne, sql } from 'drizzle-orm';
 import { AgentsService } from '../agents/agents.service.js';
 import { AuditService } from '../common/audit.service.js';
 import { InjectDb, type Database } from '../db/db.module.js';
@@ -22,13 +22,14 @@ export class AdminService {
     private readonly audit: AuditService,
   ) {}
 
-  async list(status: VerificationStatus, limit: number, offset: number) {
-    const where = eq(agentProfiles.verificationStatus, status);
+  async list(status: VerificationStatus | 'all', limit: number, offset: number) {
+    // "Tümü": başvuru yapılmış (taslak olmayan) tüm profiller
+    const where = status === 'all' ? ne(agentProfiles.verificationStatus, 'draft') : eq(agentProfiles.verificationStatus, status);
     // Bekleyenler en eski başvurudan başlar (FIFO); diğerleri en yeniden.
     const order =
       status === 'pending'
         ? asc(agentProfiles.submittedAt)
-        : desc(agentProfiles.updatedAt);
+        : desc(sql`coalesce(${agentProfiles.submittedAt}, ${agentProfiles.updatedAt})`);
 
     const items = await this.db
       .select({

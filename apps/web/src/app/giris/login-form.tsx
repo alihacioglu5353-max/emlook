@@ -1,6 +1,6 @@
 "use client";
 
-import { Mail, Smartphone } from "lucide-react";
+import { ArrowRight, BadgeCheck, Mail, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -72,6 +72,20 @@ export function LoginForm() {
       <div className="mt-6" role="tabpanel" id={`panel-${method}`} aria-labelledby={`tab-${method}`}>
         {method === "phone" ? <PhoneLogin onDone={finish} /> : <EmailLogin onDone={finish} onUsePhone={() => setMethod("phone")} />}
       </div>
+
+      <Link
+        href="/basvuru"
+        className="group mt-8 flex items-center gap-4 rounded-xl border border-line bg-surface p-4 transition hover:border-brand/40 hover:shadow-sm"
+      >
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand text-white">
+          <BadgeCheck className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-ink">Emlak danışmanı mısın?</span>
+          <span className="block text-xs text-ink-soft">Yetki belgen ve evraklarınla başvur, onaylı danışman rozetini al.</span>
+        </span>
+        <ArrowRight className="h-4 w-4 text-ink-soft transition group-hover:translate-x-0.5 group-hover:text-brand" />
+      </Link>
 
       <LegalNotice />
     </div>
@@ -277,7 +291,7 @@ function EmailLogin({ onDone, onUsePhone }: { onDone: (onboardingRequired: boole
 function LegalNotice() {
   const link = "font-semibold text-ink underline decoration-line underline-offset-2 hover:decoration-ink";
   return (
-    <div className="mt-8 rounded-xl border border-line bg-paper/70 p-4 text-xs leading-relaxed text-ink-soft">
+    <div className="mt-4 rounded-xl border border-line bg-paper/70 p-4 text-xs leading-relaxed text-ink-soft">
       <p>
         Devam ederek <LegalLink slug="kosullar" className={link}>Kullanım Koşulları</LegalLink>&apos;nı kabul etmiş olursun.
         Kişisel verilerinin hangi amaçla ve hukuki sebeple işlendiğini{" "}

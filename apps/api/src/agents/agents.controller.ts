@@ -18,7 +18,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
-import { type AuthUser, CurrentUser, Roles } from '../common/auth.decorators.js';
+import { type AuthUser, CurrentUser, Public, Roles } from '../common/auth.decorators.js';
 import { AgentsService } from './agents.service.js';
 import { UpdateAgentProfileDto, UploadDocumentDto } from './dto.js';
 
@@ -30,6 +30,13 @@ export const MAX_UPLOAD_BYTES =
 @Controller('agents')
 export class AgentsController {
   constructor(private readonly agents: AgentsService) {}
+
+  @Public()
+  @Get('document-types')
+  @ApiOperation({ summary: 'Onay için istenen evrak türleri (yönetici belirler)' })
+  documentTypes() {
+    return this.agents.documentTypes();
+  }
 
   @Roles('agent')
   @Get('me/verification')
@@ -59,12 +66,12 @@ export class AgentsController {
       type: 'object',
       required: ['type', 'file'],
       properties: {
-        type: { type: 'string', enum: ['authority_certificate', 'identity', 'other'] },
+        type: { type: 'string', example: 'authority_certificate' },
         file: { type: 'string', format: 'binary' },
       },
     },
   })
-  @ApiOperation({ summary: 'Doğrulama belgesi yükler (PDF, JPG, PNG)' })
+  @ApiOperation({ summary: 'Doğrulama belgesi yükler (PDF, JPG, PNG, BMP, WEBP)' })
   upload(
     @CurrentUser() user: AuthUser,
     @Body() dto: UploadDocumentDto,

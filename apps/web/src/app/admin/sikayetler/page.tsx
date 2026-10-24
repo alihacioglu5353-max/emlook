@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 import { ReasonAction } from "@/components/admin";
+import { FilterTabs, PAGE_SIZE, Pagination } from "@/components/data-ui";
 import { Alert, Button, EmptyState, Spinner } from "@/components/ui";
 import { api, type AdminReport } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
@@ -18,12 +19,13 @@ const TABS: [Status, string][] = [
 ];
 
 export default function AdminReports() {
-  const [status, setStatus] = useState<Status>("open");
+  const [status, setStatus] = useState<Status | "">("");
+  const [offset, setOffset] = useState(0);
   const qc = useQueryClient();
   const action = useAction();
   const q = useQuery({
-    queryKey: ["admin-reports", status],
-    queryFn: () => api<{ items: AdminReport[] }>(`/admin/reports?status=${status}&limit=100`),
+    queryKey: ["admin-reports", status, offset],
+    queryFn: () => api<{ items: AdminReport[]; total: number }>(`/admin/reports?status=${status || "all"}&limit=${PAGE_SIZE}&offset=${offset}`),
   });
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["admin-reports"] });
@@ -31,27 +33,15 @@ export default function AdminReports() {
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div className="flex gap-1">
-        {TABS.map(([s, label]) => (
-          <button
-            key={s}
-            onClick={() => setStatus(s)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              status === s ? "bg-ink text-white" : "border border-line bg-surface text-ink-soft hover:text-ink"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+    <div className="max-w-5xl space-y-6">
+      <FilterTabs value={status} options={TABS} onChange={(v) => { setStatus(v); setOffset(0); }} />
       {action.error && <Alert tone="error">{action.error}</Alert>}
       {q.isError ? (
         <Alert tone="error">{q.error.message}</Alert>
       ) : !q.data ? (
         <Spinner />
       ) : q.data.items.length === 0 ? (
-        <EmptyState>{status === "open" ? "Açık şikâyet yok." : "Kayıt yok."}</EmptyState>
+        <EmptyState>Bu filtrede şikâyet yok.</EmptyState>
       ) : (
         <ul className="space-y-3">
           {q.data.items.map((r) => (
@@ -112,6 +102,7 @@ export default function AdminReports() {
           ))}
         </ul>
       )}
+      {q.data && q.data.total > 0 && <Pagination total={q.data.total} offset={offset} onChange={setOffset} />}
     </div>
   );
 }

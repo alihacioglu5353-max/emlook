@@ -1,3 +1,4 @@
+import { avatarOf } from '../users/avatar.js';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -109,15 +110,16 @@ export class AdminOpsService {
         select a.id, a.action, a.target_type as "targetType", a.target_id as "targetId", u.full_name as actor, a.created_at as at
         from audit_logs a left join users u on u.id = a.actor_id
         order by a.created_at desc limit 10`),
-      rows<{ id: string; fullName: string; office: string | null; listings: number; likes: number; matches: number }>(sql`
-        select u.id, u.full_name as "fullName",
+      rows<{ id: string; fullName: string; office: string | null; listings: number; likes: number; matches: number; badge: string | null; score: number }>(sql`
+        select u.id, u.full_name as "fullName", ap.badge, ap.score,
           (select o.name from office_memberships m join offices o on o.id = m.office_id
             where m.user_id = u.id and m.status = 'active' limit 1) as office,
           (select count(*)::int from listings l where l.owner_id = u.id and l.status = 'active') as listings,
           (select count(*)::int from listing_likes k join listings l on l.id = k.listing_id where l.owner_id = u.id) as likes,
           (select count(*)::int from interests i where i.owner_id = u.id and i.status = 'accepted') as matches
-        from users u where u.role = 'agent' and u.status = 'active'
-        order by listings desc, likes desc limit 5`),
+        from users u join agent_profiles ap on ap.user_id = u.id
+        where u.role = 'agent' and u.status = 'active' and ap.verification_status = 'approved'
+        order by ap.score desc, listings desc limit 5`),
       rows<{ id: string; title: string; price: number; dealType: string; district: string; owner: string; photoId: string | null; publishedAt: string }>(sql`
         select l.id, l.title, l.price, l.deal_type::text as "dealType", d.name as district, u.full_name as owner,
           (select p.id from listing_photos p where p.listing_id = l.id order by p.position limit 1) as "photoId",
@@ -174,8 +176,15 @@ export class AdminOpsService {
           role: users.role,
           status: users.status,
           verification: agentProfiles.verificationStatus,
+          badge: agentProfiles.badge,
+          score: agentProfiles.score,
           createdAt: users.createdAt,
           lastLoginAt: users.lastLoginAt,
+          lastSeenAt: users.lastSeenAt,
+          online: sql<boolean>`coalesce(${users.lastSeenAt} > now() - interval '5 minutes', false)`,
+          avatarKey: users.avatarKey,
+          avatarPreset: users.avatarPreset,
+          avatarUpdatedAt: users.avatarUpdatedAt,
           activeListings: sql<number>`(select count(*)::int from listings l where l.owner_id = "users"."id" and l.status = 'active')`,
           officeName: sql<string | null>`(
             select o.name from office_memberships m join offices o on o.id = m.office_id
@@ -190,7 +199,10 @@ export class AdminOpsService {
         .offset(q.offset ?? 0),
       this.db.select({ total: sql<number>`count(*)::int` }).from(users).where(where),
     ]);
-    return { items, total };
+    return {
+      items: items.map(({ avatarKey, avatarPreset, avatarUpdatedAt, ...u }) => ({ ...u, avatar: avatarOf({ id: u.id, avatarKey, avatarPreset, avatarUpdatedAt }) })),
+      total,
+    };
   }
 
   async user(id: string) {
@@ -425,6 +437,7 @@ export class AdminOpsService {
     const reporter = alias(users, 'reporter');
     const owner = alias(users, 'owner');
     const status = q.status ?? 'open';
+    const where = status === 'all' ? undefined : eq(listingReports.status, status);
     const items = await this.db
       .select({
         id: listingReports.id,
@@ -443,11 +456,12 @@ export class AdminOpsService {
       .innerJoin(listings, eq(listings.id, listingReports.listingId))
       .innerJoin(owner, eq(owner.id, listings.ownerId))
       .innerJoin(reporter, eq(reporter.id, listingReports.reporterId))
-      .where(eq(listingReports.status, status))
+      .where(where)
       .orderBy(desc(listingReports.createdAt))
       .limit(q.limit ?? 30)
       .offset(q.offset ?? 0);
-    return { items };
+    const [{ total }] = await this.db.select({ total: sql<number>`count(*)::int` }).from(listingReports).where(where);
+    return { items, total };
   }
 
   async dismissReport(adminId: string, id: string, note?: string) {
@@ -493,12 +507,14 @@ export class AdminOpsService {
       .orderBy(desc(paymentRequests.createdAt))
       .limit(q.limit ?? 30)
       .offset(q.offset ?? 0);
+    const [{ total }] = await this.db.select({ total: sql<number>`count(*)::int` }).from(paymentRequests).where(where);
     return {
       items: items.map((i) => ({
         ...i,
         platformFee: Number(i.platformFee),
         buyerAgent: i.buyerAgent?.id ? i.buyerAgent : null,
       })),
+      total,
     };
   }
 }

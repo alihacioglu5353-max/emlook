@@ -127,6 +127,20 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - E-posta: `MAIL_PROVIDER=console|memory|smtp` (`mail/mail.service.ts`, nodemailer); üretimde console yalnızca `ALLOW_CONSOLE_MAIL=true`.
 - Web: `/giris` (Telefon / E-posta sekmeleri, hukuki metinler pencere içinde), `/parola-sifirla`, `/parola-yenile`, panelde "Giriş ve güvenlik". Demo parola: `Demo2026`.
 
+## Ayarlar, rozetler, evrak türleri, avatar, log izleme
+- `app_settings` (anahtar → jsonb): `general` (destek iletişimi, platform bedeli, KDV, ödeme bağlantısı günü, en fazla fotoğraf, çevrimiçi penceresi, duyuru),
+  `badges` (ölçüt ağırlıkları + rozet eşikleri), `integration.<ad>` (netgsm, smtp, trinkle360, fcm, s3, eids, efatura). Gizli alanlar AES-256-GCM
+  (`SETTINGS_ENCRYPTION_KEY`, yoksa JWT sırrından türetilir). Ayarlanmayan değer env'den gelir; okuma 15 sn önbellekli (`SettingsService`).
+  Netgsm/SMTP kaydedilince hemen, S3/FCM açılışta uygulanır; Trinkle360/EİDS API/e-Fatura yalnızca saklanır (entegrasyon kodu bekliyor).
+  `POST /admin/settings/integrations/:ad/test` (Netgsm SMS, SMTP e-posta, S3 yaz/sil, FCM kimlik).
+- Rozet: `agent_profiles.score/badge`; `BadgesService.recompute()` tek SQL (açılışta, saatte bir, ayar kaydında). Tanımlar `GET /settings/public`.
+- Evrak türleri: `document_types` (yönetici ekler/düzenler, zorunlu/isteğe bağlı); `verification_documents.type` bu anahtarı tutar. Belgeler PDF/JPG/PNG/BMP/WEBP.
+- Avatar: `users.avatar_key` (fotoğraf) veya `avatar_preset` (p01–p12, web `data-ui.tsx` çizer). `POST|PUT|DELETE /me/avatar`, `GET /users/:id/avatar`.
+- Loglar: `audit_logs` + `ip`, `user_agent`; giriş/çıkış/hatalı giriş, ilan, ilgi, ödeme, yönetim olayları. `users.last_seen_at` guard'da dakikada bir.
+  `GET /admin/logs/overview|online|sessions|events`, `DELETE /admin/logs/sessions/:id`.
+- Web: `/basvuru` (giriş ekranından danışman başvuru sihirbazı), `/admin/loglar`, `/admin/ayarlar` (+ `/rozetler`, `/evraklar`, `/entegrasyonlar`).
+  Tüm filtrelerde ilk seçenek ve varsayılan "Tümü"; yönetim tablolarında sayfa başına 100 kayıt ve numaralı sayfalama (`data-ui.tsx`).
+
 ## Demo verisi ve yönetim paneli
 - `db:seed-demo` (`src/db/seed-demo.ts`, içerik `src/db/demo/data.ts`): ana hesaplar 0532 000 00 00–09, ek danışmanlar 01 01–13, alıcılar 01 21–32 ve 02 01–40.
   Tekrar çalıştırılınca demo kullanıcılarının içeriği silinip yeniden kurulur; tarihler 12 haftaya yayılır. Üretimde çalışmaz.

@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { randomBytes } from 'node:crypto';
 import { and, desc, eq, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { Env } from '../config/env.js';
+import { SettingsService } from '../settings/settings.service.js';
 import { AuditService } from '../common/audit.service.js';
 import { InjectDb, type Database } from '../db/db.module.js';
 import { activeOfficeOf } from '../db/queries.js';
@@ -45,6 +46,7 @@ export class PaymentsService {
     private readonly config: ConfigService<Env, true>,
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
+    private readonly settings: SettingsService,
   ) {}
 
   // ---- Ödeme alacak hesap ----
@@ -123,7 +125,8 @@ export class PaymentsService {
       throw new BadRequestException({ code: 'BUYER_AGENT_REQUIRED', message: 'Pay için alıcı danışmanı seçin' });
     }
 
-    const days = this.config.get('PAYMENT_LINK_DAYS', { infer: true });
+    const general = await this.settings.general();
+    const days = general.paymentLinkDays;
     const [row] = await this.db
       .insert(paymentRequests)
       .values({
@@ -137,7 +140,7 @@ export class PaymentsService {
         payerEmail: dto.payerEmail?.toLowerCase() ?? null,
         description: dto.description.trim(),
         amount: dto.amount,
-        platformFeeBps: this.config.get('PLATFORM_FEE_BPS', { infer: true }),
+        platformFeeBps: general.platformFeeBps,
         expiresAt: new Date(Date.now() + days * 86_400_000),
         provider: this.provider.name,
       })
@@ -212,7 +215,7 @@ export class PaymentsService {
       held: Number(r.held),
       openRequests: Number(r.open),
       // Yeni talep ekranındaki bölüşüm önizlemesi için
-      platformFeeBps: this.config.get('PLATFORM_FEE_BPS', { infer: true }),
+      platformFeeBps: (await this.settings.general()).platformFeeBps,
     };
   }
 
@@ -313,6 +316,10 @@ export class PaymentsService {
         .returning();
       if (updated.length === 0) return 'already_paid' as const;
       await this.settle(tx, updated[0]!);
+      await this.audit.log(
+        { actorId: null, action: 'payment.paid', targetType: 'payment_request', targetId: req.id, metadata: { amount: updated[0]!.amount, payer: updated[0]!.payerName } },
+        tx,
+      );
       return 'paid' as const;
     });
     return { received: true, outcome };
@@ -349,14 +356,15 @@ export class PaymentsService {
     await tx.insert(paymentSplits).values(rows);
 
     if (split.platform > 0) {
-      const v = vatFromGross(split.platform, this.config.get('VAT_RATE_BPS', { infer: true }));
+      const vatRateBps = (await this.settings.general()).vatRateBps;
+      const v = vatFromGross(split.platform, vatRateBps);
       await tx.insert(invoices).values({
         requestId: r.id,
         userId: r.createdBy,
         net: v.net,
         vat: v.vat,
         total: v.total,
-        vatRateBps: this.config.get('VAT_RATE_BPS', { infer: true }),
+        vatRateBps,
       });
     }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMe } from "@/components/app-shell";
 import { ConsentsCard } from "@/components/consents-card";
 import { SecurityCard } from "@/components/security-card";
+import { AvatarCard } from "@/components/avatar-card";
 import { Alert, Card, Eyebrow, RoleBadge, StatusBadge } from "@/components/ui";
 
 export default function PanelHome() {
@@ -24,6 +25,7 @@ export default function PanelHome() {
             Akışa git →
           </Link>
         </Card>
+        <AvatarCard />
         <SecurityCard />
         <ConsentsCard />
       </div>
@@ -74,7 +76,7 @@ export default function PanelHome() {
           </Alert>
         </div>
         <Link
-          href="/panel/basvuru"
+          href="/basvuru"
           className="mt-6 inline-flex h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white hover:bg-black"
         >
           {copy.cta}
@@ -103,6 +105,7 @@ export default function PanelHome() {
           {me.office ? "Ofisime git" : "Ofis bul veya aç"}
         </Link>
       </Card>
+      <AvatarCard />
       <SecurityCard />
       <ConsentsCard />
     </div>

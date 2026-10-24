@@ -7,6 +7,7 @@ import { useMe } from "@/components/app-shell";
 import { useState } from "react";
 import { EidsBadge, ListingStatusBadge, PhotoPlaceholder } from "@/components/listing-card";
 import { useStartConversation } from "@/components/chat";
+import { BadgeChip } from "@/components/data-ui";
 import { Avatar, FollowButton, Reactions } from "@/components/social";
 import { Alert, Button, Card, Spinner, Textarea, VerifiedIcon } from "@/components/ui";
 import {
@@ -141,13 +142,14 @@ export default function ListingDetailPage() {
           <Card className="!p-6">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-soft">Danışman</p>
             <div className="mt-3 flex items-center gap-3">
-              <Avatar name={l.owner.fullName} size={44} />
+              <Avatar name={l.owner.fullName} size={44} avatar={l.owner.avatar} />
               <Link href={`/danisman/${l.owner.id}`} className="min-w-0 flex-1 hover:underline">
                 <span className="flex items-center gap-1.5 font-semibold">
                   {l.owner.fullName ?? "Danışman"}
                   {l.owner.isVerified && (
                     <VerifiedIcon className="h-4 w-4 text-[#2f7de1]" aria-label="Onaylı danışman" />
                   )}
+                  <BadgeChip badge={l.owner.badge} size="xs" />
                 </span>
                 <span className="block text-sm text-ink-soft">
                   {l.owner.office?.name ?? "Bağımsız danışman"}

@@ -62,7 +62,7 @@ export default function MyOfficePage() {
       {!verified && (
         <Alert tone="warn" title="Önce danışman onayı gerekiyor">
           Ofis açmak veya bir ofise katılmak için onaylı danışman olmalısın.{" "}
-          <Link href="/panel/basvuru" className="font-semibold underline">
+          <Link href="/basvuru" className="font-semibold underline">
             Başvuruna git
           </Link>
         </Alert>

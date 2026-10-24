@@ -10,8 +10,13 @@ export const STATUS_LABEL: Record<VerificationStatus, string> = {
 export const DOC_LABEL: Record<VerificationDoc["type"], string> = {
   authority_certificate: "Yetki belgesi",
   identity: "Kimlik",
+  tax_plate: "Vergi levhası",
+  signature_circular: "İmza sirküleri",
   other: "Diğer",
 };
+/** Evrak türünün adı (yönetici yeni tür eklediyse anahtarın kendisi) */
+export const docLabel = (type: string, types?: { key: string; label: string }[]) =>
+  types?.find((t) => t.key === type)?.label ?? DOC_LABEL[type] ?? type;
 
 export const MISSING_LABEL: Record<string, string> = {
   licenseNumber: "Yetki belgesi numarası",

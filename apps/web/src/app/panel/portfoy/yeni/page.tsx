@@ -16,7 +16,7 @@ export default function NewListingPage() {
   if (!me.agent?.isVerified) {
     return (
       <Alert tone="warn" title="İlan girmek için danışman onayı gerekiyor">
-        <Link href="/panel/basvuru" className="font-semibold underline">
+        <Link href="/basvuru" className="font-semibold underline">
           Başvuruna git
         </Link>
       </Alert>

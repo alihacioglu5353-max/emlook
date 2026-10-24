@@ -2,7 +2,12 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  Activity,
+  Award,
   BadgeCheck,
+  FileStack,
+  Plug,
+  Settings2,
   Building2,
   ChevronDown,
   ExternalLink,
@@ -44,6 +49,13 @@ const NAV: ({ section: string } | NavItem)[] = [
   { href: "/admin/sikayetler", label: "Şikâyetler", icon: Flag, count: "openReports" },
   { section: "Finans" },
   { href: "/admin/odemeler", label: "Ödemeler", icon: Wallet, count: "pendingInvoices" },
+  { section: "İzleme" },
+  { href: "/admin/loglar", label: "Log izleme", icon: Activity },
+  { section: "Ayarlar" },
+  { href: "/admin/ayarlar", label: "Genel ayarlar", icon: Settings2 },
+  { href: "/admin/ayarlar/rozetler", label: "Rozetler ve puan", icon: Award },
+  { href: "/admin/ayarlar/evraklar", label: "Evrak türleri", icon: FileStack },
+  { href: "/admin/ayarlar/entegrasyonlar", label: "Entegrasyonlar", icon: Plug },
 ];
 const items = NAV.filter((n): n is NavItem => "href" in n);
 
@@ -108,7 +120,7 @@ export function AdminFrame({ me, onLogout, children }: { me: Me; onLogout: () =>
     .filter((x) => pathname === x.href || pathname.startsWith(x.href + "/"))
     .sort((a, b) => b.href.length - a.href.length)[0];
   const title = pathname === "/admin" ? "Yönetim Özeti" : (active?.label ?? "Yönetim");
-  const sub = pathname.split("/").length > 3;
+  const sub = !!active && pathname !== active.href;
 
   const sidebar = (mini: boolean) => (
     <nav className="grid h-full grid-rows-[auto_1fr_auto] bg-ink text-white" aria-label="Yönetim menüsü">

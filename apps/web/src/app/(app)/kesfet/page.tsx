@@ -168,7 +168,7 @@ export default function DiscoverPage() {
           onChange={(e) => setCity(e.target.value)}
           className="h-10 rounded-full border border-line bg-surface px-4 text-sm font-semibold text-ink-soft focus:border-ink focus:outline-none"
         >
-          <option value="">Tüm iller</option>
+          <option value="">Tümü</option>
           {cities.data?.map((c) => (
             <option key={c.code} value={c.code}>
               {c.name}

@@ -65,17 +65,18 @@ export interface Me {
   fullName: string | null;
   role: Role | null;
   onboardingRequired: boolean;
-  agent: { verificationStatus: VerificationStatus; isVerified: boolean } | null;
+  agent: { verificationStatus: VerificationStatus; isVerified: boolean; score: number; badge: string | null } | null;
   office: { id: string; name: string; role: OfficeRole; status: OfficeStatus } | null;
   consents: { type: string; version: string; granted: boolean; at: string }[];
   /** E-posta + parola ile giriş açık mı */
   hasPassword: boolean;
+  avatar: { kind: "photo"; url: string } | { kind: "preset"; preset: string } | null;
   passwordUpdatedAt: string | null;
 }
 
 export interface VerificationDoc {
   id: string;
-  type: "authority_certificate" | "identity" | "other";
+  type: string;
   originalName: string;
   mimeType: string;
   sizeBytes: number;
@@ -96,7 +97,15 @@ export interface Verification {
   reviewedAt: string | null;
   rejectionReason: string | null;
   documents: VerificationDoc[];
+  documentTypes: DocumentTypeDef[];
   missing: string[];
+}
+
+export interface DocumentTypeDef {
+  key: string;
+  label: string;
+  description: string | null;
+  required: boolean;
 }
 
 export interface AdminListItem {
@@ -272,7 +281,7 @@ export interface ListingCard {
   publishedAt: string | null;
   createdAt: string;
   location: { city: string; district: string; neighbourhood: string | null };
-  owner: { id: string; fullName: string | null; isVerified: boolean; officeName: string | null };
+  owner: { id: string; fullName: string | null; isVerified: boolean; officeName: string | null; badge?: string | null; avatar?: AvatarData };
   coverPhoto: string | null;
   photoCount: number;
   likeCount: number;
@@ -321,6 +330,8 @@ export interface ListingDetail {
     fullName: string | null;
     isVerified: boolean;
     office: { id: string; name: string } | null;
+    badge?: string | null;
+    avatar?: AvatarData;
   };
   likeCount: number;
   likedByMe: boolean;
@@ -391,6 +402,9 @@ export interface AgentProfileCard {
   district: string | null;
   bio: string | null;
   isVerified: boolean;
+  avatar?: AvatarData;
+  badge?: string | null;
+  score?: number;
   office: { id: string; name: string; role: OfficeRole } | null;
   independent: boolean;
   followerCount: number;
@@ -577,7 +591,7 @@ export interface AdminCharts {
   topDistricts: { district: string; count: number; avgSale: number | null }[];
   funnel: { status: string; count: number }[];
   activity: { id: string; action: string; targetType: string; targetId: string | null; actor: string | null; at: string }[];
-  topAgents: { id: string; fullName: string; office: string | null; listings: number; likes: number; matches: number }[];
+  topAgents: { id: string; fullName: string; office: string | null; listings: number; likes: number; matches: number; badge: string | null; score: number }[];
   latest: { id: string; title: string; price: number; dealType: string; district: string; owner: string; photoId: string | null; publishedAt: string }[];
   previousWeek: { users: number; listings: number; messages: number; interests: number };
 }
@@ -593,6 +607,11 @@ export interface AdminUserRow {
   lastLoginAt: string | null;
   activeListings: number;
   officeName: string | null;
+  badge: string | null;
+  score: number | null;
+  lastSeenAt: string | null;
+  online: boolean;
+  avatar?: { kind: "photo"; url: string } | { kind: "preset"; preset: string } | null;
 }
 
 export interface AdminUserDetail {
@@ -671,3 +690,55 @@ export interface AdminPaymentRow {
   buyerAgent: { id: string; fullName: string | null } | null;
   invoiceStatus: "pending" | "issued" | "failed" | null;
 }
+
+// ---- Yönetim ayarları ----
+export interface SettingsField {
+  key: string;
+  label: string;
+  type: "text" | "number" | "boolean" | "select" | "secret" | "textarea";
+  hint?: string;
+  options?: { value: string; label: string }[];
+  min?: number;
+  max?: number;
+  required?: boolean;
+  placeholder?: string;
+}
+export interface BadgeTierDef {
+  key: string;
+  label: string;
+  minScore: number;
+  color: string;
+}
+export interface IntegrationView {
+  name: string;
+  title: string;
+  category: string;
+  description: string;
+  apply: "live" | "restart" | "pending";
+  testable: boolean;
+  fields: SettingsField[];
+  values: Record<string, unknown>;
+  configured: boolean;
+  missing: string[];
+  envFallback: string;
+}
+export interface AdminSettings {
+  general: Record<string, string | number>;
+  generalFields: SettingsField[];
+  badges: { weights: Record<string, number>; tiers: BadgeTierDef[] };
+  badgeMetrics: { key: string; label: string }[];
+  badgeDistribution: (BadgeTierDef & { count: number; avgScore: number })[];
+  integrations: IntegrationView[];
+}
+export interface DocumentTypeRow {
+  id: string;
+  key: string;
+  label: string;
+  description: string | null;
+  required: boolean;
+  active: boolean;
+  sortOrder: number;
+  uploads: number;
+}
+
+export type AvatarData = { kind: "photo"; url: string } | { kind: "preset"; preset: string } | null;

@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
-import { Pager, ReasonAction } from "@/components/admin";
+import { ReasonAction } from "@/components/admin";
+import { FilterSelect, PAGE_SIZE, Pagination } from "@/components/data-ui";
 import { ListingStatusBadge } from "@/components/listing-card";
 import { Alert, Button, EmptyState, Spinner } from "@/components/ui";
 import { api, type AdminListingRow, type EidsStatus, type ListingStatus } from "@/lib/api";
@@ -12,7 +13,7 @@ import { timeAgo } from "@/lib/format";
 import { DEAL_LABEL, EIDS_LABEL, formatPrice, LISTING_STATUS_LABEL } from "@/lib/listing";
 import { useAction } from "@/lib/use-action";
 
-const PAGE = 30;
+const PAGE = PAGE_SIZE;
 
 export default function AdminListingsPage() {
   return (
@@ -45,8 +46,6 @@ function AdminListings() {
     void qc.invalidateQueries({ queryKey: ["admin-listings"] });
     void qc.invalidateQueries({ queryKey: ["admin-dashboard"] });
   };
-  const select =
-    "h-11 rounded-full border border-line bg-surface px-4 text-sm font-semibold focus:border-ink focus:outline-none";
 
   return (
     <div className="space-y-6">
@@ -59,7 +58,7 @@ function AdminListings() {
           setOffset(0);
           setQ(text.trim());
         }}
-        className="flex flex-wrap gap-2"
+        className="flex flex-wrap items-end gap-3"
       >
         <input
           type="search"
@@ -67,25 +66,21 @@ function AdminListings() {
           placeholder="Başlık, danışman veya taşınmaz no"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="h-11 min-w-0 flex-1 rounded-full border border-line bg-surface px-5 text-sm focus:border-ink focus:outline-none"
+          className="h-10 min-w-[220px] flex-1 rounded-lg border border-line bg-surface px-4 text-sm focus:border-ink focus:outline-none"
         />
-        <select aria-label="Durum" className={select} value={status} onChange={(e) => { setStatus(e.target.value as ListingStatus | ""); setOffset(0); }}>
-          <option value="">Tüm durumlar</option>
-          {(Object.keys(LISTING_STATUS_LABEL) as ListingStatus[]).map((s) => (
-            <option key={s} value={s}>
-              {LISTING_STATUS_LABEL[s]}
-            </option>
-          ))}
-        </select>
-        <select aria-label="EİDS" className={select} value={eids} onChange={(e) => { setEids(e.target.value as EidsStatus | ""); setOffset(0); }}>
-          <option value="">EİDS: tümü</option>
-          {(Object.keys(EIDS_LABEL) as EidsStatus[]).map((s) => (
-            <option key={s} value={s}>
-              EİDS: {EIDS_LABEL[s]}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" variant="secondary">
+        <FilterSelect<ListingStatus>
+          label="Durum"
+          value={status}
+          options={(Object.keys(LISTING_STATUS_LABEL) as ListingStatus[]).map((x) => [x, LISTING_STATUS_LABEL[x]])}
+          onChange={(v) => { setStatus(v); setOffset(0); }}
+        />
+        <FilterSelect<EidsStatus>
+          label="EİDS"
+          value={eids}
+          options={(Object.keys(EIDS_LABEL) as EidsStatus[]).map((x) => [x, EIDS_LABEL[x]])}
+          onChange={(v) => { setEids(v); setOffset(0); }}
+        />
+        <Button type="submit" variant="secondary" className="!h-10">
           Ara
         </Button>
       </form>
@@ -199,7 +194,7 @@ function AdminListings() {
               </li>
             ))}
           </ul>
-          <Pager total={list.data.total} offset={offset} page={PAGE} onChange={setOffset} />
+          <Pagination total={list.data.total} offset={offset} pageSize={PAGE} onChange={setOffset} />
         </>
       )}
     </div>

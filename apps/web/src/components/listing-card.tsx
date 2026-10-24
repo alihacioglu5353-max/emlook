@@ -8,6 +8,7 @@ import {
   formatPrice,
   LISTING_STATUS_LABEL,
 } from "@/lib/listing";
+import { Avatar as DataAvatar, BadgeChip } from "./data-ui";
 import { VerifiedIcon } from "./ui";
 
 /** Fotoğraf yoksa gösterilen sade yer tutucu */
@@ -115,8 +116,10 @@ export function ListingCard({
 export function OwnerLine({ owner }: { owner: Card["owner"] }) {
   return (
     <p className="flex items-center gap-1.5 text-sm">
+      <DataAvatar avatar={owner.avatar} name={owner.fullName} size={20} />
       <span className="font-semibold">{owner.fullName ?? "Danışman"}</span>
       {owner.isVerified && <VerifiedIcon className="h-3.5 w-3.5 text-[#2f7de1]" />}
+      <BadgeChip badge={owner.badge} size="xs" />
       <span className="text-ink-soft">· {owner.officeName ?? "Bağımsız"}</span>
     </p>
   );

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, lt, or } from 'drizzle-orm';
 import { InjectDb, type Database } from '../db/db.module.js';
 import { sessions, users, type UserRole } from '../db/schema.js';
 import { AuthUser, IS_PUBLIC, ROLES } from './auth.decorators.js';
@@ -75,7 +75,24 @@ export class JwtAuthGuard implements CanActivate {
       throw new ForbiddenException('Hesabınız askıya alınmış');
     }
     req.user = { id: payload.sub, role: row.role, sessionId: payload.sid };
+    this.touch(payload.sub, payload.sid);
     return true;
+  }
+
+  /** Son görülme ve oturum kullanım zamanı: en çok dakikada bir yazılır, isteği bekletmez */
+  private touch(userId: string, sessionId: string) {
+    const minuteAgo = new Date(Date.now() - 60_000);
+    const now = new Date();
+    void this.db
+      .update(users)
+      .set({ lastSeenAt: now })
+      .where(and(eq(users.id, userId), or(isNull(users.lastSeenAt), lt(users.lastSeenAt, minuteAgo))))
+      .catch(() => undefined);
+    void this.db
+      .update(sessions)
+      .set({ lastUsedAt: now })
+      .where(and(eq(sessions.id, sessionId), or(isNull(sessions.lastUsedAt), lt(sessions.lastUsedAt, minuteAgo))))
+      .catch(() => undefined);
   }
 }
 

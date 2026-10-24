@@ -279,7 +279,7 @@ function Filters({
             value={cityCode}
             onChange={(e) => setParams({ cityCode: e.target.value, districtId: "" })}
           >
-            <option value="">Tüm iller</option>
+            <option value="">Tümü</option>
             {cities.data?.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.name}
@@ -293,7 +293,7 @@ function Filters({
             value={get("districtId")}
             onChange={(e) => setParams({ districtId: e.target.value })}
           >
-            <option value="">Tüm ilçeler</option>
+            <option value="">Tümü</option>
             {districts.data?.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}

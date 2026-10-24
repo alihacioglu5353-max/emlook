@@ -12,7 +12,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { and, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { hashPassword } from '../common/password.js';
@@ -20,6 +20,8 @@ import { normalizeForSearch } from '../common/text.js';
 import { validateEnv } from '../config/env.js';
 import { LEGAL_DOCS } from '../legal/legal.texts.js';
 import { splitAmount, vatFromGross } from '../payments/money.js';
+import { BadgesService } from '../settings/badges.service.js';
+import { DEFAULT_BADGES } from '../settings/settings.service.js';
 import { LocalStorageService, S3StorageService, type StorageService } from '../storage/storage.service.js';
 import {
   CHAT_SCRIPTS,
@@ -57,6 +59,7 @@ import {
   paymentRequests,
   paymentSplits,
   payoutAccounts,
+  sessions,
   users,
   verificationDocuments,
 } from './schema.js';
@@ -253,6 +256,8 @@ try {
   await db.delete(listingSwipes).where(inArray(listingSwipes.userId, demoIds));
   await db.delete(notifications).where(inArray(notifications.userId, demoIds));
   await db.delete(auditLogs).where(inArray(auditLogs.actorId, demoIds));
+  await db.delete(auditLogs).where(and(isNull(auditLogs.actorId), inArray(auditLogs.action, ['payment.paid', 'auth.login_failed'])));
+  await db.delete(sessions).where(inArray(sessions.userId, demoIds));
   await db.delete(payoutAccounts).where(inArray(payoutAccounts.userId, demoIds));
   await db.delete(verificationDocuments).where(inArray(verificationDocuments.userId, demoIds));
   await db.delete(officeMemberships).where(inArray(officeMemberships.userId, demoIds));
@@ -300,6 +305,11 @@ try {
       const key = await storage.put(`verification/${uid}`, buf, 'pdf', 'application/pdf');
       await db.insert(verificationDocuments).values({
         userId: uid, type: 'authority_certificate', storageKey: key, originalName: 'yetki-belgesi.pdf',
+        mimeType: 'application/pdf', sizeBytes: buf.length, createdAt: submittedAt ?? created,
+      });
+      const idKey = await storage.put(`verification/${uid}`, buf, 'pdf', 'application/pdf');
+      await db.insert(verificationDocuments).values({
+        userId: uid, type: 'identity', storageKey: idKey, originalName: 'kimlik.pdf',
         mimeType: 'application/pdf', sizeBytes: buf.length, createdAt: submittedAt ?? created,
       });
       audit.push({ actorId: uid, action: 'agent.submitted', targetType: 'user', targetId: uid, createdAt: submittedAt ?? created });
@@ -631,12 +641,93 @@ try {
     if (status === 'dismissed') audit.push({ actorId: adminId, action: 'report.dismissed', targetType: 'report', targetId: rep!.id, createdAt: resolvedAt! });
   }
 
-  // ---- 10. Bildirimler ve denetim kayıtları ----
+  // ---- 10. Avatarlar, çevrimiçi durum, oturumlar ve log kayıtları ----
+  const UAS = [
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1',
+    'Mozilla/5.0 (Linux; Android 15; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
+    'Emlook/1.0.0 (iPhone; iOS 18.1) Dart/3.11',
+    'Emlook/1.0.0 (Android 15; Pixel 9) Dart/3.11',
+  ];
+  const ipFor = (n: number) => ['85.105', '88.230', '176.88', '78.180', '212.156', '95.70'][n % 6] + `.${(n * 37) % 250}.${(n * 91) % 250}`;
+  const actives = DEMO_USERS.filter((u) => !u.suspended);
+  for (const [n, u] of actives.entries()) {
+    const uid = id(u.phone);
+    // Profil: kullanıcıların çoğu hazır avatar seçmiş
+    const preset = rand() < 0.7 ? `p${String(1 + Math.floor(rand() * 12)).padStart(2, '0')}` : null;
+    // Son görülme: ilk dokuzu şu an çevrimiçi, sonraki yirmisi bugün aktif, kalanı son 30 gün
+    const lastSeen =
+      n % 8 === 1 && n < 70 ? new Date(NOW - Math.floor(rand() * 4 * 60_000)) : n % 3 === 0 ? new Date(NOW - Math.floor(rand() * 10) * 3_600_000) : ago(1 + Math.floor(rand() * Math.min(29, u.days)));
+    await db.update(users).set({ avatarPreset: preset, avatarKey: null, avatarUpdatedAt: preset ? ago(Math.min(u.days, 30)) : null, lastSeenAt: lastSeen }).where(eq(users.id, uid));
+    const ua = UAS[n % UAS.length]!;
+    const ip = ipFor(n);
+    // Açık oturum (son görülmeyle uyumlu)
+    if (NOW - lastSeen.getTime() < 7 * DAY) {
+      await db.insert(sessions).values({
+        userId: uid, refreshTokenHash: randomBytes(32).toString('hex'), ip, userAgent: ua,
+        createdAt: new Date(lastSeen.getTime() - Math.floor(rand() * 5) * DAY - 3_600_000), lastUsedAt: lastSeen,
+        expiresAt: new Date(lastSeen.getTime() + 30 * DAY),
+      });
+    }
+    // Giriş / çıkış geçmişi
+    const span = Math.min(30, u.days);
+    const loginCount = 1 + Math.floor(rand() * (u.role === 'agent' ? 14 : 6));
+    for (let k = 0; k < loginCount; k++) {
+      const at = ago(Math.floor(rand() * span));
+      const method = u.role !== 'admin' && rand() < 0.3 ? 'password' : 'otp';
+      audit.push({ actorId: uid, action: 'auth.login', targetType: 'user', targetId: uid, metadata: { method }, ip, userAgent: ua, createdAt: at });
+      if (rand() < 0.35) audit.push({ actorId: uid, action: 'auth.logout', targetType: 'session', ip, userAgent: ua, createdAt: after(at, 20, 400) });
+    }
+    audit.push({ actorId: uid, action: 'auth.login', targetType: 'user', targetId: uid, metadata: { method: 'otp' }, ip, userAgent: ua, createdAt: new Date(lastSeen.getTime() - 20 * 60_000) });
+    if (rand() < 0.12) {
+      audit.push({ actorId: uid, action: 'auth.login_failed', targetType: 'user', targetId: uid, metadata: { method: 'password', email: '•••' }, ip, userAgent: ua, createdAt: ago(Math.floor(rand() * 10)) });
+    }
+  }
+  // Bilinmeyen e-postalarla hatalı denemeler (kaba kuvvet örneği)
+  for (let k = 0; k < 6; k++) {
+    audit.push({ actorId: null, action: 'auth.login_failed', targetType: 'user', metadata: { method: 'password', email: `a***${k}@ornek.com` }, ip: '45.155.205.' + (10 + k), userAgent: 'python-requests/2.32', createdAt: new Date(NOW - (k + 1) * 7 * 60_000) });
+  }
+  // İlan, ilgi ve ödeme olayları
+  for (const [i, m] of listingMeta.entries()) {
+    const l = LISTINGS[i]!;
+    const created = ago(l.days + 1);
+    audit.push({ actorId: m.owner, action: 'listing.created', targetType: 'listing', targetId: m.id, metadata: { title: m.title }, ip: ipFor(i), userAgent: UAS[2], createdAt: created });
+    if (m.publishedAt) audit.push({ actorId: m.owner, action: 'listing.published', targetType: 'listing', targetId: m.id, metadata: { title: m.title }, ip: ipFor(i), userAgent: UAS[2], createdAt: m.publishedAt });
+    if (l.status === 'passive' || l.status === 'sold') {
+      audit.push({ actorId: m.owner, action: 'listing.status_changed', targetType: 'listing', targetId: m.id, metadata: { title: m.title, status: l.status }, ip: ipFor(i), userAgent: UAS[0], createdAt: ago(Math.max(1, l.days - 10)) });
+    }
+  }
+  const interestRows = await db.select({ listingId: interests.listingId, requesterId: interests.requesterId, createdAt: interests.createdAt }).from(interests).where(inArray(interests.requesterId, demoIds));
+  for (const r of interestRows) {
+    const m = listingMeta.find((x) => x.id === r.listingId);
+    audit.push({ actorId: r.requesterId, action: 'interest.created', targetType: 'listing', targetId: r.listingId, metadata: { title: m?.title }, userAgent: UAS[4], createdAt: r.createdAt });
+  }
+  const paid = await db
+    .select({ id: paymentRequests.id, amount: paymentRequests.amount, payer: paymentRequests.payerName, paidAt: paymentRequests.paidAt })
+    .from(paymentRequests)
+    .where(and(inArray(paymentRequests.createdBy, demoIds), eq(paymentRequests.status, 'paid')));
+  for (const p of paid) audit.push({ actorId: null, action: 'payment.paid', targetType: 'payment_request', targetId: p.id, metadata: { amount: p.amount, payer: p.payer }, createdAt: p.paidAt! });
+
+  // ---- 11. Bildirimler ve denetim kayıtları ----
   // Yönetici bildirimleri ve ofis talepleri
   notify(id('+905320000001'), 'office.join_requested', 'Katılma talebi', 'Tolga Uçar ofisine katılmak istiyor', { officeId: officeIds.get('yilmaz') }, ago(1));
   notify(id('+905320000107'), 'office.invited', 'Ofis daveti', 'Boğaziçi Gayrimenkul Beşiktaş seni ekibine davet etti', { officeId: officeIds.get('bogazici') }, ago(2));
   for (let i = 0; i < notes.length; i += 500) await db.insert(notifications).values(notes.slice(i, i + 500));
-  if (audit.length) await db.insert(auditLogs).values(audit);
+  for (let i = 0; i < audit.length; i += 500) await db.insert(auditLogs).values(audit.slice(i, i + 500));
+
+  // ---- 12. Rozetler (varsayılan ölçütlerle; ayarlar ekranından değiştirilebilir) ----
+  const [badgeRow] = await db.select({ value: sql<Record<string, unknown>>`value` }).from(sql`app_settings`).where(sql`key = 'badges'`);
+  const badgeSettings = badgeRow ? { ...DEFAULT_BADGES, ...(badgeRow.value as object) } as typeof DEFAULT_BADGES : DEFAULT_BADGES;
+  const tiers = [...badgeSettings.tiers].sort((x, y) => y.minScore - x.minScore);
+  await db.execute(sql`
+    with s as (
+      select ap.user_id, ${BadgesService.scoreSql(badgeSettings)} as score
+      from agent_profiles ap join users u on u.id = ap.user_id where ap.verification_status = 'approved'
+    )
+    update agent_profiles ap set score = s.score, scored_at = now(),
+      badge = ${sql.raw(`case ${tiers.map((t) => `when s.score >= ${Number(t.minScore)} then '${t.key.replace(/'/g, '')}'`).join(' ')} else null end`)}
+    from s where s.user_id = ap.user_id`);
 
   // ---- Özet ----
   const count = async (q: Promise<{ n: number }[]>) => (await q)[0]!.n;
@@ -648,6 +739,7 @@ try {
     conversations: conversationOf.size,
     payments: PAYMENTS.length,
     notifications: notes.length,
+    logs: audit.length,
     users: await count(db.select({ n: sql<number>`count(*)::int` }).from(users).where(inArray(users.id, demoIds))),
   };
   console.log('\nDemo verisi hazır:', Object.entries(totals).map(([k, v]) => `${v} ${k}`).join(' · '));

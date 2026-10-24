@@ -21,6 +21,7 @@ import {
   type InterestStatus,
 } from '../db/schema.js';
 import { listingCards, photoPath, visibleActive, type Viewer } from '../listings/listing-cards.js';
+import { AuditService } from '../common/audit.service.js';
 import { ListingsService } from '../listings/listings.service.js';
 import { MessagingService } from '../messaging/messaging.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -38,6 +39,7 @@ export class DiscoverService {
     private readonly listings: ListingsService,
     private readonly notifications: NotificationsService,
     private readonly messaging: MessagingService,
+    private readonly audit: AuditService,
   ) {}
 
   // ---- Keşfet kartları ----
@@ -304,6 +306,7 @@ export class DiscoverService {
       },
       tx,
     );
+    await this.audit.log({ actorId: requesterId, action: 'interest.created', targetType: 'listing', targetId: listing.id, metadata: { title: listing.title } }, tx);
     return created;
   }
 

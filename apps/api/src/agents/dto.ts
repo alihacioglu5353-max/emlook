@@ -1,6 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator';
-import { documentType, type DocumentType } from '../db/schema.js';
+import { IsOptional, IsString, Length, Matches, MaxLength } from 'class-validator';
 
 export class UpdateAgentProfileDto {
   @ApiPropertyOptional({ description: 'Taşınmaz Ticareti Yetki Belgesi no' })
@@ -35,7 +34,8 @@ export class UpdateAgentProfileDto {
 }
 
 export class UploadDocumentDto {
-  @ApiProperty({ enum: documentType.enumValues })
-  @IsIn(documentType.enumValues)
-  type!: DocumentType;
+  @ApiProperty({ description: 'Evrak türü anahtarı (GET /agents/document-types)', example: 'authority_certificate' })
+  @IsString()
+  @Matches(/^[a-z0-9_]{2,40}$/)
+  type!: string;
 }

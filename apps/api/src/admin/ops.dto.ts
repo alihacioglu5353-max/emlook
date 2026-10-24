@@ -89,10 +89,10 @@ export class EidsDecisionDto {
 }
 
 export class ReportsQuery extends Paged {
-  @ApiPropertyOptional({ enum: reportStatus.enumValues, default: 'open' })
+  @ApiPropertyOptional({ enum: [...reportStatus.enumValues, 'all'], default: 'open' })
   @IsOptional()
-  @IsIn(reportStatus.enumValues)
-  status?: 'open' | 'resolved' | 'dismissed';
+  @IsIn([...reportStatus.enumValues, 'all'])
+  status?: 'open' | 'resolved' | 'dismissed' | 'all';
 }
 
 export class DismissDto {

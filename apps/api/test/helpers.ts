@@ -11,6 +11,7 @@ import { locationsLoaded, seedLocations } from '../src/db/seed-locations.js';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import { agentProfiles, users } from '../src/db/schema.js';
+import { SettingsService } from '../src/settings/settings.service.js';
 import { MemorySmsService, SmsService } from '../src/sms/sms.service.js';
 
 export interface TestContext {
@@ -44,6 +45,12 @@ export async function resetDb(ctx: TestContext): Promise<void> {
              sessions, verification_documents, agent_profiles, otp_codes, users
              RESTART IDENTITY CASCADE
   `);
+  // Yönetici ayarları ve evrak türleri varsayılana döner
+  await ctx.db.execute(sql`TRUNCATE app_settings`);
+  await ctx.db.execute(sql`
+    DELETE FROM document_types WHERE key NOT IN ('authority_certificate', 'identity', 'tax_plate', 'signature_circular', 'other')`);
+  await ctx.db.execute(sql`UPDATE document_types SET required = (key = 'authority_certificate'), active = true`);
+  ctx.app.get(SettingsService).clearCache();
   ctx.sms.outbox.length = 0;
   ctx.sms.failNext = false;
 }

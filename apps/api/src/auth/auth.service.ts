@@ -10,6 +10,7 @@ import { and, eq, gt, isNull } from 'drizzle-orm';
 import { createHash, randomBytes } from 'node:crypto';
 import type { ClientInfo } from '../common/auth.decorators.js';
 import type { AccessPayload } from '../common/auth.guards.js';
+import { AuditService } from '../common/audit.service.js';
 import { normalizeTrPhone } from '../common/phone.js';
 import type { Env } from '../config/env.js';
 import { InjectDb, type Database } from '../db/db.module.js';
@@ -38,6 +39,7 @@ export class AuthService {
     private readonly otp: OtpService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
+    private readonly audit: AuditService,
   ) {}
 
   parsePhone(input: string): string {
@@ -79,6 +81,7 @@ export class AuthService {
     }
 
     const tokens = await this.issueSession(user.id, client);
+    await this.audit.log({ actorId: user.id, action: 'auth.login', targetType: 'user', targetId: user.id, metadata: { method: 'otp', newUser: user.role === null }, ip: client.ip, userAgent: client.userAgent });
     return {
       ...tokens,
       user: { id: user.id, phone: user.phone, role: user.role },
@@ -126,11 +129,13 @@ export class AuthService {
     };
   }
 
-  async logout(sessionId: string): Promise<void> {
-    await this.db
+  async logout(sessionId: string, client?: ClientInfo): Promise<void> {
+    const [s] = await this.db
       .update(sessions)
       .set({ revokedAt: new Date() })
-      .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
+      .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)))
+      .returning({ userId: sessions.userId });
+    if (s) await this.audit.log({ actorId: s.userId, action: 'auth.logout', targetType: 'session', targetId: sessionId, ip: client?.ip, userAgent: client?.userAgent });
   }
 
   /** Yeni oturum açar (OTP veya parola ile girişten sonra). */

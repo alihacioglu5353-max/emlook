@@ -26,7 +26,20 @@ export type AuditAction =
   | 'password.set'
   | 'password.changed'
   | 'password.reset_requested'
-  | 'password.reset';
+  | 'password.reset'
+  | 'auth.login'
+  | 'auth.login_failed'
+  | 'auth.logout'
+  | 'listing.created'
+  | 'listing.published'
+  | 'listing.status_changed'
+  | 'listing.deleted'
+  | 'interest.created'
+  | 'payment.paid'
+  | 'settings.updated'
+  | 'document_type.updated'
+  | 'badges.recomputed'
+  | 'session.revoked';
 
 @Injectable()
 export class AuditService {
@@ -40,6 +53,8 @@ export class AuditService {
       targetType: string;
       targetId?: string;
       metadata?: Record<string, unknown>;
+      ip?: string | null;
+      userAgent?: string | null;
     },
     tx: Pick<Database, 'insert'> = this.db,
   ): Promise<void> {
@@ -49,6 +64,8 @@ export class AuditService {
       targetType: entry.targetType,
       targetId: entry.targetId ?? null,
       metadata: entry.metadata ?? null,
+      ip: entry.ip ?? null,
+      userAgent: entry.userAgent?.slice(0, 400) ?? null,
     });
   }
 }

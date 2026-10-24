@@ -56,7 +56,7 @@ export default function PortfolioPage() {
       {!verified && (
         <Alert tone="warn" title="İlan girmek için danışman onayı gerekiyor">
           Onaylandığında portföyünü ekleyip ağla paylaşabilirsin.{" "}
-          <Link href="/panel/basvuru" className="font-semibold underline">
+          <Link href="/basvuru" className="font-semibold underline">
             Başvuruna git
           </Link>
         </Alert>

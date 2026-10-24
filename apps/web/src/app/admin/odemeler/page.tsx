@@ -3,17 +3,19 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
+import { FilterTabs, PAGE_SIZE, Pagination } from "@/components/data-ui";
 import { Alert, EmptyState, Spinner } from "@/components/ui";
 import { api, type AdminDashboard, type AdminPaymentRow, type PaymentStatus } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { formatKurus, PAYMENT_STATUS_LABEL } from "@/lib/listing";
 
 export default function AdminPayments() {
-  const [status, setStatus] = useState<PaymentStatus | "">("paid");
+  const [status, setStatus] = useState<PaymentStatus | "">("");
+  const [offset, setOffset] = useState(0);
   const dash = useQuery({ queryKey: ["admin-dashboard"], queryFn: () => api<AdminDashboard>("/admin/dashboard") });
   const q = useQuery({
-    queryKey: ["admin-payments", status],
-    queryFn: () => api<{ items: AdminPaymentRow[] }>(`/admin/payments?limit=100${status ? `&status=${status}` : ""}`),
+    queryKey: ["admin-payments", status, offset],
+    queryFn: () => api<{ items: AdminPaymentRow[]; total: number }>(`/admin/payments?limit=${PAGE_SIZE}&offset=${offset}${status ? `&status=${status}` : ""}`),
   });
   const d = dash.data;
 
@@ -39,19 +41,11 @@ export default function AdminPayments() {
           ))}
         </div>
       )}
-      <div className="flex flex-wrap gap-1">
-        {(["paid", "open", "expired", "cancelled", ""] as const).map((s) => (
-          <button
-            key={s || "all"}
-            onClick={() => setStatus(s)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-              status === s ? "bg-ink text-white" : "border border-line bg-surface text-ink-soft hover:text-ink"
-            }`}
-          >
-            {s ? PAYMENT_STATUS_LABEL[s] : "Tümü"}
-          </button>
-        ))}
-      </div>
+      <FilterTabs<PaymentStatus>
+        value={status}
+        options={(["paid", "open", "expired", "cancelled", "refunded"] as PaymentStatus[]).map((x) => [x, PAYMENT_STATUS_LABEL[x]])}
+        onChange={(v) => { setStatus(v); setOffset(0); }}
+      />
       {q.isError ? (
         <Alert tone="error">{q.error.message}</Alert>
       ) : !q.data ? (
@@ -102,6 +96,7 @@ export default function AdminPayments() {
           </table>
         </div>
       )}
+      {q.data && q.data.total > 0 && <Pagination total={q.data.total} offset={offset} onChange={setOffset} />}
     </div>
   );
 }
