@@ -497,11 +497,24 @@ export class ListingsService {
   }
 
   private searchText(
-    l: Pick<CreateListingDto, 'title' | 'dealType' | 'category'> & { rooms?: string | null },
+    l: Pick<CreateListingDto, 'title' | 'dealType' | 'category'> & {
+      rooms?: string | null;
+      description?: string | null;
+    },
     loc: { city: string; district: string; neighbourhood: string | null },
   ) {
     return normalizeForSearch(
-      [l.title, DEAL_LABEL[l.dealType], CATEGORY_LABEL[l.category], l.rooms ?? '', loc.city, loc.district, loc.neighbourhood ?? ''].join(' '),
+      [
+        l.title,
+        DEAL_LABEL[l.dealType],
+        CATEGORY_LABEL[l.category],
+        l.rooms ?? '',
+        loc.city,
+        loc.district,
+        loc.neighbourhood ?? '',
+        // Açıklamanın başı da aranır ("deniz manzaralı", "otoparklı")
+        (l.description ?? '').slice(0, 1000),
+      ].join(' '),
     );
   }
 
