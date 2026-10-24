@@ -37,16 +37,29 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - Bildirimler: `notifications` tablosu + `NotificationsService.notify(items, tx)` — E7'de push buradan tetiklenecek.
 - Mobilde ofis açma ve ekip yönetimi yok (web paneli); mobil: durum, davet kabul/ret, arama + talep, ayrılma, bildirim listesi.
 
+## E3 tasarımı (portföy)
+- Konum verisi: `cities` (plaka kodu) → `districts` → `neighbourhoods` (81 il, 973 ilçe, 73.300 mahalle/köy; `turkey-neighbourhoods`, MIT).
+  Yükleme: `pnpm --filter api db:seed-locations` (yalnızca boşsa). Uç noktalar `@Public`: `/locations/cities`, `/cities/:code/districts`, `/districts/:id/neighbourhoods`.
+- İlan yaşamı: `draft` → `active` ↔ `passive` → `sold`; `removed` yalnızca yönetici (E9). Yalnızca taslak silinir.
+  Yayın şartı: ≥1 fotoğraf + EİDS `verified` (veya `isDemo`). Doğrulanmış taşınmaz numarası kilitlenir (`EIDS_LOCKED`).
+- EİDS soyut: `EIDS_PROVIDER=mock` (geliştirme/test; `...0000` ile biten numara başarısız) · `manual` (üretim varsayılanı, `pending`, yönetici onaylar).
+- Görünürlük (`listing-cards.ts › visibleTo`): `public` herkes · `agents` danışmanlar · `network` takipçiler + aynı ofis. Mülk sahibi `cobrokeShare` görmez.
+- `listingCards()` akış/keşfet/arama için ortak kart sorgusu; `search_text` E6 araması için Türkçe karakterleri sadeleştirilmiş metin.
+- PATCH'te isteğe bağlı alanlar `null` ile temizlenir; ilçe değişip mahalle gönderilmezse mahalle sıfırlanır.
+- Web: `/panel/portfoy` (liste, sekmeler), `/panel/portfoy/yeni`, `/panel/portfoy/[id]` (fotoğraf, EİDS, yayın), `/ilan/[id]` (detay, tüm roller).
+  Fotoğraflar `/api/backend` köprüsünden; görseller tarayıcıda 1 saat özel önbellekte.
+
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
 - **Mobil (E1) tamam:** giriş, kod, kayıt, ana sayfa, başvuru + belge yükleme (Flutter 3.47, go_router 18, dio 5, flutter_secure_storage 11, file_picker 13 — `FilePicker.pickFiles` statiktir ve liste döndürür). `flutter analyze` temiz, testler geçiyor.
 - **E2 tamam (API, web, mobil):** ofis açma + admin onayı, arama/profil, talep, davet, transfer, roller, çıkarma, ayrılma, sahiplik devri, bildirimler. Toplam 28 e2e testi.
+- **E3 tamam (API, web):** ilan girişi, konum, fotoğraf, EİDS soyutlaması, yayın kuralları, görünürlük. Toplam 35 e2e testi. Mobil ekranlar en sona.
 - **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
-1. E3 Portföy: ilan girişi, paylaşım oranı, medya, il–ilçe–mahalle verisi, görünürlük; EİDS doğrulaması API anlaşmasına kadar soyut arayüz
+1. E4 Akış → E5 Keşfet → E6 Arama → E7 Mesajlaşma → E8 Ödeme → E9 Admin; mobil ekranlar ve testleri en sonda
 2. Gerçek SMS sağlayıcısı (Netgsm / İleti Merkezi) ve S3 uyumlu depolama sürücüsü
 3. KVKK aydınlatma ve kullanım koşulları nihai metinleri (şu an yer tutucu)
 4. E7 push bildirimleri (FCM/APNs) — `NotificationsService.notify` üzerinden
@@ -56,6 +69,7 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 docker compose up -d          # PostgreSQL (port 5433) + Redis
 pnpm install
 pnpm --filter api db:migrate
+pnpm --filter api db:seed-locations   # il/ilçe/mahalle (bir kez)
 pnpm dev:api                  # http://localhost:3000/api/v1, Swagger: /docs
 pnpm --filter api test:e2e
 ```

@@ -7,6 +7,9 @@ import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { DB, type Database } from '../src/db/db.module.js';
 import { runMigrations } from '../src/db/migrate.js';
+import { locationsLoaded, seedLocations } from '../src/db/seed-locations.js';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import pg from 'pg';
 import { agentProfiles, users } from '../src/db/schema.js';
 import { MemorySmsService, SmsService } from '../src/sms/sms.service.js';
 
@@ -19,6 +22,7 @@ export interface TestContext {
 
 export async function createTestApp(): Promise<TestContext> {
   await runMigrations(process.env.DATABASE_URL!);
+  await ensureLocations(process.env.DATABASE_URL!);
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
@@ -35,7 +39,8 @@ export async function createTestApp(): Promise<TestContext> {
 
 export async function resetDb(ctx: TestContext): Promise<void> {
   await ctx.db.execute(sql`
-    TRUNCATE notifications, office_memberships, offices, audit_logs, consents,
+    TRUNCATE listing_likes, listing_saves, listing_photos, listings, follows,
+             notifications, office_memberships, offices, audit_logs, consents,
              sessions, verification_documents, agent_profiles, otp_codes, users
              RESTART IDENTITY CASCADE
   `);
@@ -113,3 +118,21 @@ export async function approvedAgent(
     .where(eq(agentProfiles.userId, s.userId));
   return s;
 }
+
+/** Konum verisi test veritabanına bir kez yüklenir (her testte silinmez). */
+async function ensureLocations(url: string) {
+  const pool = new pg.Pool({ connectionString: url, max: 1 });
+  try {
+    const db = drizzle(pool);
+    if (!(await locationsLoaded(db))) await seedLocations(db);
+  } finally {
+    await pool.end();
+  }
+}
+
+/** Geçerli küçük bir JPEG içeriği (yalnızca imza baytları önemlidir). */
+export const JPEG = Buffer.concat([
+  Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]),
+  Buffer.from('JFIF\u0000test-image'),
+  Buffer.from([0xff, 0xd9]),
+]);

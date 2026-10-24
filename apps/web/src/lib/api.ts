@@ -222,3 +222,124 @@ export interface NotificationItem {
   readAt: string | null;
   createdAt: string;
 }
+
+// ---- E3 · Portföy ----
+
+export type DealType = "sale" | "rent";
+export type ListingCategory =
+  | "apartment"
+  | "residence"
+  | "villa"
+  | "detached_house"
+  | "land"
+  | "shop"
+  | "office"
+  | "warehouse"
+  | "building"
+  | "other";
+export type ListingVisibility = "public" | "network" | "agents";
+export type ListingStatus = "draft" | "active" | "passive" | "sold" | "removed";
+export type EidsStatus = "unverified" | "pending" | "verified" | "failed";
+
+export interface City {
+  code: string;
+  name: string;
+}
+export interface NamedId {
+  id: number;
+  name: string;
+}
+
+export interface ListingCard {
+  id: string;
+  dealType: DealType;
+  category: ListingCategory;
+  title: string;
+  price: number;
+  grossM2: number | null;
+  netM2: number | null;
+  rooms: string | null;
+  cobrokeShare: number | null;
+  visibility: ListingVisibility;
+  status: ListingStatus;
+  isDemo: boolean;
+  eidsVerified: boolean;
+  publishedAt: string | null;
+  createdAt: string;
+  location: { city: string; district: string; neighbourhood: string | null };
+  owner: { id: string; fullName: string | null; isVerified: boolean; officeName: string | null };
+  coverPhoto: string | null;
+  photoCount: number;
+  likeCount: number;
+  likedByMe: boolean;
+  savedByMe: boolean;
+}
+
+export interface MyListings {
+  items: ListingCard[];
+  counts: Record<ListingStatus | DealType, number>;
+}
+
+export interface ListingDetail {
+  id: string;
+  dealType: DealType;
+  category: ListingCategory;
+  categoryLabel: string;
+  title: string;
+  description: string | null;
+  price: number;
+  grossM2: number | null;
+  netM2: number | null;
+  rooms: string | null;
+  floor: string | null;
+  buildingAge: number | null;
+  cityCode: string;
+  districtId: number;
+  neighbourhoodId: number | null;
+  location: { city: string; district: string; neighbourhood: string | null };
+  cobrokeShare: number | null;
+  visibility: ListingVisibility;
+  status: ListingStatus;
+  isDemo: boolean;
+  publishedAt: string | null;
+  updatedAt: string;
+  eids: {
+    verified: boolean;
+    status?: EidsStatus;
+    propertyNumber?: string | null;
+    message?: string | null;
+    checkedAt?: string | null;
+  };
+  photos: { id: string; url: string }[];
+  owner: {
+    id: string;
+    fullName: string | null;
+    isVerified: boolean;
+    office: { id: string; name: string } | null;
+  };
+  likeCount: number;
+  likedByMe: boolean;
+  savedByMe: boolean;
+  isOwner: boolean;
+  removedReason?: string | null;
+}
+
+export interface ListingInput {
+  dealType: DealType;
+  category: ListingCategory;
+  title: string;
+  description?: string | null;
+  price: number;
+  grossM2?: number | null;
+  netM2?: number | null;
+  rooms?: string | null;
+  floor?: string | null;
+  buildingAge?: number | null;
+  cityCode: string;
+  districtId: number;
+  neighbourhoodId?: number | null;
+  cobrokeShare: number;
+  visibility: ListingVisibility;
+  isDemo: boolean;
+  propertyNumber?: string;
+}
