@@ -15,6 +15,13 @@
       "when": 1792866858140,
       "tag": "0001_e2_offices",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792868270697,
+      "tag": "0002_e3_listings",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -317,6 +318,193 @@ export const notifications = pgTable(
   (t) => [index('notifications_user_created_idx').on(t.userId, t.createdAt)],
 );
 
+// ---------------------------------------------------------------------------
+// E3 · Konum verisi (PTT posta kodu listesi; `pnpm db:seed-locations`)
+// ---------------------------------------------------------------------------
+
+export const cities = pgTable('cities', {
+  /** Plaka kodu: "34" */
+  code: text('code').primaryKey(),
+  name: text('name').notNull(),
+});
+
+export const districts = pgTable(
+  'districts',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    cityCode: text('city_code')
+      .notNull()
+      .references(() => cities.code, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+  },
+  (t) => [uniqueIndex('districts_city_name_idx').on(t.cityCode, t.name)],
+);
+
+export const neighbourhoods = pgTable(
+  'neighbourhoods',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    districtId: integer('district_id')
+      .notNull()
+      .references(() => districts.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+  },
+  (t) => [uniqueIndex('neighbourhoods_district_name_idx').on(t.districtId, t.name)],
+);
+
+// ---------------------------------------------------------------------------
+// E3 · Portföy
+// ---------------------------------------------------------------------------
+
+export const dealType = pgEnum('deal_type', ['sale', 'rent']);
+
+export const listingCategory = pgEnum('listing_category', [
+  'apartment',
+  'residence',
+  'villa',
+  'detached_house',
+  'land',
+  'shop',
+  'office',
+  'warehouse',
+  'building',
+  'other',
+]);
+
+/** public: herkes · network: takipçiler ve ofis · agents: yalnızca danışmanlar */
+export const listingVisibility = pgEnum('listing_visibility', ['public', 'network', 'agents']);
+
+/** removed: yönetici tarafından yayından kaldırıldı */
+export const listingStatus = pgEnum('listing_status', [
+  'draft',
+  'active',
+  'passive',
+  'sold',
+  'removed',
+]);
+
+export const eidsStatus = pgEnum('eids_status', ['unverified', 'pending', 'verified', 'failed']);
+
+export const listings = pgTable(
+  'listings',
+  {
+    id: id(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** İlan girildiği andaki ofis (ofis değişse de ilan geçmişi korunur) */
+    officeId: uuid('office_id').references(() => offices.id, { onDelete: 'set null' }),
+    dealType: dealType('deal_type').notNull(),
+    category: listingCategory('category').notNull(),
+    title: text('title').notNull(),
+    description: text('description'),
+    /** Türk lirası, tam sayı */
+    price: bigint('price', { mode: 'number' }).notNull(),
+    grossM2: integer('gross_m2'),
+    netM2: integer('net_m2'),
+    /** "3+1", "Stüdyo" gibi */
+    rooms: text('rooms'),
+    floor: text('floor'),
+    buildingAge: integer('building_age'),
+    cityCode: text('city_code')
+      .notNull()
+      .references(() => cities.code),
+    districtId: integer('district_id')
+      .notNull()
+      .references(() => districts.id),
+    neighbourhoodId: integer('neighbourhood_id').references(() => neighbourhoods.id),
+    /** Alıcı/kiracı tarafındaki danışmana düşen komisyon payı (%). 50 → %50-%50 */
+    cobrokeShare: integer('cobroke_share').notNull(),
+    visibility: listingVisibility('visibility').notNull().default('public'),
+    status: listingStatus('status').notNull().default('draft'),
+    /** Lansman öncesi test portföyü; açıkça etiketlenir */
+    isDemo: boolean('is_demo').notNull().default(false),
+    /** EİDS taşınmaz numarası */
+    propertyNumber: text('property_number'),
+    eidsStatus: eidsStatus('eids_status').notNull().default('unverified'),
+    eidsReference: text('eids_reference'),
+    eidsMessage: text('eids_message'),
+    eidsCheckedAt: timestamp('eids_checked_at', { withTimezone: true }),
+    /** Arama için küçük harfli, aksansız metin (başlık, konum, kategori) */
+    searchText: text('search_text').notNull().default(''),
+    publishedAt: timestamp('published_at', { withTimezone: true }),
+    removedReason: text('removed_reason'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('listings_owner_status_idx').on(t.ownerId, t.status),
+    index('listings_feed_idx').on(t.status, t.publishedAt),
+    index('listings_location_idx').on(t.cityCode, t.districtId),
+  ],
+);
+
+export const listingPhotos = pgTable(
+  'listing_photos',
+  {
+    id: id(),
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    storageKey: text('storage_key').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: integer('size_bytes').notNull(),
+    /** 0 = kapak */
+    position: integer('position').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('listing_photos_listing_idx').on(t.listingId, t.position)],
+);
+
+export const listingLikes = pgTable(
+  'listing_likes',
+  {
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('listing_likes_pair_idx').on(t.listingId, t.userId)],
+);
+
+export const listingSaves = pgTable(
+  'listing_saves',
+  {
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('listing_saves_pair_idx').on(t.listingId, t.userId),
+    index('listing_saves_user_idx').on(t.userId, t.createdAt),
+  ],
+);
+
+/** Danışman takibi ("Benim Ağım") */
+export const follows = pgTable(
+  'follows',
+  {
+    followerId: uuid('follower_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    followeeId: uuid('followee_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('follows_pair_idx').on(t.followerId, t.followeeId),
+    index('follows_followee_idx').on(t.followeeId),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type VerificationDocument = typeof verificationDocuments.$inferSelect;
@@ -329,3 +517,9 @@ export type OfficeStatus = (typeof officeStatus.enumValues)[number];
 export type OfficeRole = (typeof officeRole.enumValues)[number];
 export type OfficeMembership = typeof officeMemberships.$inferSelect;
 export type MembershipStatus = (typeof membershipStatus.enumValues)[number];
+export type Listing = typeof listings.$inferSelect;
+export type DealType = (typeof dealType.enumValues)[number];
+export type ListingCategory = (typeof listingCategory.enumValues)[number];
+export type ListingVisibility = (typeof listingVisibility.enumValues)[number];
+export type ListingStatus = (typeof listingStatus.enumValues)[number];
+export type EidsStatus = (typeof eidsStatus.enumValues)[number];

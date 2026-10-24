@@ -22,6 +22,9 @@ export interface Env {
   KVKK_CLARIFICATION_VERSION: string;
   TERMS_VERSION: string;
   ADMIN_PHONES: string[];
+  /** mock: geliştirme/test · manual: yönetici elle doğrular (EİDS API entegrasyonuna kadar) */
+  EIDS_PROVIDER: 'mock' | 'manual';
+  MAX_LISTING_PHOTOS: number;
 }
 
 const required = (raw: Record<string, unknown>, key: string): string => {
@@ -71,6 +74,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw new Error(`Geçersiz SMS_PROVIDER: ${smsProvider}`);
   }
 
+  const eids = optional(raw, 'EIDS_PROVIDER', nodeEnv === 'production' ? 'manual' : 'mock');
+  if (!['mock', 'manual'].includes(eids)) {
+    throw new Error(`Geçersiz EIDS_PROVIDER: ${eids}`);
+  }
+
   const env: Env = {
     NODE_ENV: nodeEnv as Env['NODE_ENV'],
     PORT: int(raw, 'PORT', 3000),
@@ -94,11 +102,16 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     ),
     TERMS_VERSION: optional(raw, 'TERMS_VERSION', '2026-11'),
     ADMIN_PHONES: list(raw, 'ADMIN_PHONES'),
+    EIDS_PROVIDER: eids as Env['EIDS_PROVIDER'],
+    MAX_LISTING_PHOTOS: int(raw, 'MAX_LISTING_PHOTOS', 20),
   };
 
   if (env.NODE_ENV === 'production') {
     // Gerçek SMS sağlayıcısı (Netgsm, İleti Merkezi vb.) eklendiğinde
     // üretimde 'console' da yasaklanmalı.
+    if (env.EIDS_PROVIDER === 'mock') {
+      throw new Error('Üretimde EIDS_PROVIDER=mock kullanılamaz');
+    }
     if (env.SMS_PROVIDER === 'memory') {
       throw new Error('Üretimde SMS_PROVIDER=memory kullanılamaz');
     }
