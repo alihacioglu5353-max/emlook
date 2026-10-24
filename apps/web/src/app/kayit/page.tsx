@@ -114,7 +114,7 @@ export default function OnboardingPage() {
             <Link href="/kvkk" target="_blank" className="font-semibold text-ink underline">
               KVKK Aydınlatma Metni
             </Link>
-            &apos;ni okudum.
+            &apos;ni okudum ve anladım.
           </Check>
           <Check checked={terms} onChange={setTerms} required>
             <Link href="/kosullar" target="_blank" className="font-semibold text-ink underline">
@@ -123,7 +123,10 @@ export default function OnboardingPage() {
             &apos;nı kabul ediyorum.
           </Check>
           <Check checked={marketing} onChange={setMarketing}>
-            Kampanya ve duyurular için ticari elektronik ileti almak istiyorum (isteğe bağlı).
+            <Link href="/ticari-ileti" target="_blank" className="font-semibold text-ink underline">
+              Ticari elektronik ileti
+            </Link>{" "}
+            metni kapsamında kampanya ve duyuru almak istiyorum (isteğe bağlı).
           </Check>
         </div>
 

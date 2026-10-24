@@ -10,6 +10,7 @@ import 'features/discover/interests_screen.dart';
 import 'features/feed/feed_screen.dart';
 import 'features/feed/saved_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/legal/legal_screen.dart';
 import 'features/listings/listing_detail_screen.dart';
 import 'features/listings/listing_form_screen.dart';
 import 'features/listings/my_listings_screen.dart';
@@ -61,6 +62,8 @@ GoRouter buildRouter(Session session) => GoRouter(
       redirect: (context, state) {
         final loc = state.matchedLocation;
         final onAuth = loc.startsWith('/giris');
+        // Hukuki metinler oturumdan bağımsız açılır (giriş ve kayıt ekranından).
+        if (loc.startsWith('/yasal/') && session.state != SessionState.unknown) return null;
         switch (session.state) {
           case SessionState.unknown:
             return loc == '/acilis' ? null : '/acilis';
@@ -88,6 +91,10 @@ GoRouter buildRouter(Session session) => GoRouter(
           ],
         ),
         GoRoute(path: '/kayit', builder: (_, _) => OnboardingScreen(session: session)),
+        GoRoute(
+          path: '/yasal/:slug',
+          builder: (_, s) => LegalScreen(session: session, slug: s.pathParameters['slug']!),
+        ),
 
         // Alt menülü sekmeler
         StatefulShellRoute.indexedStack(

@@ -17,6 +17,7 @@ import {
   type ConsentType,
 } from '../db/schema.js';
 import type { OnboardingDto, UpdateMeDto } from './dto.js';
+import { LEGAL_DOCS } from '../legal/legal.texts.js';
 
 @Injectable()
 export class UsersService {
@@ -101,7 +102,7 @@ export class UsersService {
       const rows: { type: ConsentType; version: string; granted: boolean }[] = [
         { type: 'kvkk_clarification', version: kvkk, granted: true },
         { type: 'terms_of_use', version: terms, granted: true },
-        { type: 'marketing', version: kvkk, granted: dto.marketing ?? false },
+        { type: 'marketing', version: LEGAL_DOCS['ticari-ileti'].version, granted: dto.marketing ?? false },
       ];
       await tx.insert(consents).values(
         rows.map((r) => ({
@@ -142,7 +143,7 @@ export class UsersService {
     await this.db.insert(consents).values({
       userId,
       type: 'marketing',
-      version: this.config.get('KVKK_CLARIFICATION_VERSION', { infer: true }),
+      version: LEGAL_DOCS['ticari-ileti'].version,
       granted,
       ip: client.ip,
       userAgent: client.userAgent,

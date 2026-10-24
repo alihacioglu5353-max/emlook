@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
@@ -86,7 +87,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _check(bool value, ValueChanged<bool> onChanged, String text) => CheckboxListTile(
+  Widget _check(bool value, ValueChanged<bool> onChanged, String text, String slug) => CheckboxListTile(
         value: value,
         onChanged: (v) => setState(() => onChanged(v ?? false)),
         controlAffinity: ListTileControlAffinity.leading,
@@ -94,6 +95,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         dense: true,
         activeColor: EmColors.brand,
         title: Text(text, style: const TextStyle(fontSize: 14)),
+        secondary: IconButton(
+          tooltip: 'Metni oku',
+          icon: const Icon(Icons.description_outlined),
+          onPressed: () => context.push('/yasal/$slug'),
+        ),
       );
 
   @override
@@ -132,10 +138,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               decoration: const InputDecoration(labelText: 'E-posta (isteğe bağlı)'),
             ),
             const SizedBox(height: 16),
-            _check(_kvkk, (v) => _kvkk = v, 'KVKK Aydınlatma Metni\'ni okudum.'),
-            _check(_terms, (v) => _terms = v, 'Kullanım Koşulları\'nı kabul ediyorum.'),
+            _check(_kvkk, (v) => _kvkk = v, 'KVKK Aydınlatma Metni\'ni okudum ve anladım.', 'kvkk'),
+            _check(_terms, (v) => _terms = v, 'Kullanım Koşulları\'nı kabul ediyorum.', 'kosullar'),
             _check(_marketing, (v) => _marketing = v,
-                'Kampanya ve duyurular için ticari ileti almak istiyorum (isteğe bağlı).'),
+                'Ticari elektronik ileti metni kapsamında kampanya ve duyuru almak istiyorum (isteğe bağlı).',
+                'ticari-ileti'),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Notice(text: _error!, tone: NoticeTone.error),
