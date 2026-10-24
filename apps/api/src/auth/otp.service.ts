@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   Injectable,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, count, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
@@ -83,10 +84,16 @@ export class OtpService {
       expiresAt: new Date(now + this.ttl * 1000),
     });
 
-    await this.sms.send(
-      phone,
-      `Emlook giris kodunuz: ${code}. Kodu kimseyle paylasmayin.`,
-    );
+    try {
+      await this.sms.send(phone, `Emlook giris kodunuz: ${code}. Kodu kimseyle paylasmayin.`);
+    } catch {
+      // Kod iletilemedi: geçersiz say ki yeniden istemek bekleme süresine takılmasın
+      await this.db.delete(otpCodes).where(and(eq(otpCodes.phone, phone), isNull(otpCodes.consumedAt)));
+      throw new ServiceUnavailableException({
+        code: 'SMS_FAILED',
+        message: 'Doğrulama kodu şu an gönderilemedi, lütfen biraz sonra tekrar deneyin',
+      });
+    }
 
     return { expiresInSeconds: this.ttl, resendInSeconds: this.resend };
   }

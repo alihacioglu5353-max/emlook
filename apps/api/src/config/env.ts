@@ -14,9 +14,22 @@ export interface Env {
   OTP_MAX_ATTEMPTS: number;
   OTP_RESEND_SECONDS: number;
   OTP_HOURLY_LIMIT: number;
-  /** console: koda loga yazar · memory: testler için bellekte tutar */
-  SMS_PROVIDER: 'console' | 'memory';
+  /** console: kodu loga yazar · memory: testler · netgsm: gerçek SMS */
+  SMS_PROVIDER: 'console' | 'memory' | 'netgsm';
+  /** Netgsm (SMS_PROVIDER=netgsm iken zorunlu) */
+  NETGSM: { userCode: string; password: string; header: string; useOtpEndpoint: boolean; baseUrl: string } | null;
+  /** local: STORAGE_DIR klasörü · s3: S3 uyumlu nesne deposu (üretimde önerilen) */
+  STORAGE_DRIVER: 'local' | 's3';
   STORAGE_DIR: string;
+  S3: {
+    bucket: string;
+    region: string;
+    endpoint?: string;
+    accessKeyId: string;
+    secretAccessKey: string;
+    forcePathStyle: boolean;
+    prefix: string;
+  } | null;
   MAX_UPLOAD_MB: number;
   CORS_ORIGINS: string[];
   KVKK_CLARIFICATION_VERSION: string;
@@ -25,7 +38,10 @@ export interface Env {
   /** mock: geliştirme/test · manual: yönetici elle doğrular (EİDS API entegrasyonuna kadar) */
   EIDS_PROVIDER: 'mock' | 'manual';
   MAX_LISTING_PHOTOS: number;
-  PUSH_PROVIDER: 'log' | 'memory';
+  /** log: geliştirme · memory: testler · fcm: Firebase Cloud Messaging */
+  PUSH_PROVIDER: 'log' | 'memory' | 'fcm';
+  /** Firebase servis hesabı JSON'u (ham veya base64); PUSH_PROVIDER=fcm iken zorunlu */
+  FCM_SERVICE_ACCOUNT: string | null;
   PAYMENT_PROVIDER: 'mock';
   PAYMENT_WEBHOOK_SECRET: string;
   /** Platform hizmet bedeli, on binde (500 = %5) */
@@ -79,8 +95,13 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw new Error(`Geçersiz NODE_ENV: ${nodeEnv}`);
   }
   const smsProvider = optional(raw, 'SMS_PROVIDER', 'console');
-  if (!['console', 'memory'].includes(smsProvider)) {
+  if (!['console', 'memory', 'netgsm'].includes(smsProvider)) {
     throw new Error(`Geçersiz SMS_PROVIDER: ${smsProvider}`);
+  }
+
+  const storageDriver = optional(raw, 'STORAGE_DRIVER', 'local');
+  if (!['local', 's3'].includes(storageDriver)) {
+    throw new Error(`Geçersiz STORAGE_DRIVER: ${storageDriver}`);
   }
 
   const eids = optional(raw, 'EIDS_PROVIDER', nodeEnv === 'production' ? 'manual' : 'mock');
@@ -89,7 +110,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
   }
 
   const push = optional(raw, 'PUSH_PROVIDER', 'log');
-  if (!['log', 'memory'].includes(push)) {
+  if (!['log', 'memory', 'fcm'].includes(push)) {
     throw new Error(`Geçersiz PUSH_PROVIDER: ${push}`);
   }
 
@@ -111,7 +132,32 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     OTP_RESEND_SECONDS: int(raw, 'OTP_RESEND_SECONDS', 60),
     OTP_HOURLY_LIMIT: int(raw, 'OTP_HOURLY_LIMIT', 5),
     SMS_PROVIDER: smsProvider as Env['SMS_PROVIDER'],
+    NETGSM:
+      smsProvider === 'netgsm'
+        ? {
+            userCode: required(raw, 'NETGSM_USERCODE'),
+            password: required(raw, 'NETGSM_PASSWORD'),
+            header: required(raw, 'NETGSM_HEADER'),
+            // OTP paketi (hızlı, öncelikli hat) varsayılan; kapatılırsa normal gönderim
+            useOtpEndpoint: optional(raw, 'NETGSM_USE_OTP', 'true') !== 'false',
+            baseUrl: optional(raw, 'NETGSM_BASE_URL', 'https://api.netgsm.com.tr').replace(/\/$/, ''),
+          }
+        : null,
+    STORAGE_DRIVER: storageDriver as Env['STORAGE_DRIVER'],
     STORAGE_DIR: optional(raw, 'STORAGE_DIR', './uploads'),
+    S3:
+      storageDriver === 's3'
+        ? {
+            bucket: required(raw, 'S3_BUCKET'),
+            // Cloudflare R2 için "auto"
+            region: optional(raw, 'S3_REGION', 'auto'),
+            endpoint: optional(raw, 'S3_ENDPOINT', '') || undefined,
+            accessKeyId: required(raw, 'S3_ACCESS_KEY_ID'),
+            secretAccessKey: required(raw, 'S3_SECRET_ACCESS_KEY'),
+            forcePathStyle: optional(raw, 'S3_FORCE_PATH_STYLE', 'false') === 'true',
+            prefix: optional(raw, 'S3_PREFIX', '').replace(/^\/+/, ''),
+          }
+        : null,
     MAX_UPLOAD_MB: int(raw, 'MAX_UPLOAD_MB', 10),
     CORS_ORIGINS: list(raw, 'CORS_ORIGINS'),
     KVKK_CLARIFICATION_VERSION: optional(
@@ -124,6 +170,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     EIDS_PROVIDER: eids as Env['EIDS_PROVIDER'],
     MAX_LISTING_PHOTOS: int(raw, 'MAX_LISTING_PHOTOS', 20),
     PUSH_PROVIDER: push as Env['PUSH_PROVIDER'],
+    FCM_SERVICE_ACCOUNT: push === 'fcm' ? required(raw, 'FCM_SERVICE_ACCOUNT') : null,
     PAYMENT_PROVIDER: paymentProvider as Env['PAYMENT_PROVIDER'],
     PAYMENT_WEBHOOK_SECRET:
       nodeEnv === 'production'
@@ -136,13 +183,15 @@ export function validateEnv(raw: Record<string, unknown>): Env {
   };
 
   if (env.NODE_ENV === 'production') {
-    // Gerçek SMS sağlayıcısı (Netgsm, İleti Merkezi vb.) eklendiğinde
-    // üretimde 'console' da yasaklanmalı.
     if (env.EIDS_PROVIDER === 'mock') {
       throw new Error('Üretimde EIDS_PROVIDER=mock kullanılamaz');
     }
     if (env.SMS_PROVIDER === 'memory') {
       throw new Error('Üretimde SMS_PROVIDER=memory kullanılamaz');
+    }
+    if (env.SMS_PROVIDER === 'console' && raw.ALLOW_CONSOLE_SMS !== 'true') {
+      // Kodlar loga yazılırsa giriş güvenliği olmaz
+      throw new Error('Üretimde gerçek SMS sağlayıcısı gerekli (SMS_PROVIDER=netgsm)');
     }
     if (env.PAYMENT_PROVIDER === 'mock' && raw.ALLOW_MOCK_PAYMENTS !== 'true') {
       // Gerçek sağlayıcı (Trinkle360) eklenene kadar üretimde ödeme alınmaz
