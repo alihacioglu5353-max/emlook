@@ -1,0 +1,78 @@
+"use client";
+
+import Link from "next/link";
+import { useMe } from "@/components/app-shell";
+import { Alert, Card, Eyebrow, StatusBadge } from "@/components/ui";
+
+export default function PanelHome() {
+  const { me } = useMe();
+  const first = me.fullName?.split(" ")[0] ?? "";
+
+  if (me.role === "consumer") {
+    return (
+      <div className="max-w-2xl">
+        <Eyebrow>Hoş geldin</Eyebrow>
+        <h1 className="text-3xl font-extrabold tracking-tight">Merhaba {first}</h1>
+        <Card className="mt-8">
+          <p className="text-ink-soft">
+            Portföyleri görüntüleme ve doğrulanmış danışmanlara talep bırakma özellikleri
+            yakında Emlook mobil uygulamasında.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  const status = me.agent?.verificationStatus ?? "draft";
+  const copy = {
+    draft: {
+      tone: "info" as const,
+      title: "Onaylı danışman rozeti için başvurunu tamamla",
+      text: "Yetki belgesi bilgilerini ve belgeni yükle. Onaylanan danışmanlar portföy paylaşabilir ve rozetle ayrışır.",
+      cta: "Başvuruya devam et",
+    },
+    pending: {
+      tone: "warn" as const,
+      title: "Başvurun incelemede",
+      text: "Ekibimiz belgelerini kontrol ediyor. Sonuçlandığında sana bildirim göndereceğiz.",
+      cta: "Başvuruyu görüntüle",
+    },
+    rejected: {
+      tone: "error" as const,
+      title: "Başvurunda düzeltme gerekiyor",
+      text: "Ret gerekçesini inceleyip bilgilerini güncelledikten sonra yeniden gönderebilirsin.",
+      cta: "Düzelt ve yeniden gönder",
+    },
+    approved: {
+      tone: "ok" as const,
+      title: "Onaylı danışmansın",
+      text: "Profilinde onay rozeti görünüyor. Portföy paylaşımı ve eşleşme özellikleri yakında açılacak.",
+      cta: "Başvuru detayları",
+    },
+  }[status];
+
+  return (
+    <div className="max-w-3xl">
+      <Eyebrow>Genel bakış</Eyebrow>
+      <h1 className="text-3xl font-extrabold tracking-tight">Merhaba {first}</h1>
+
+      <Card className="mt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold">Danışman onayı</h2>
+          <StatusBadge status={status} />
+        </div>
+        <div className="mt-5">
+          <Alert tone={copy.tone} title={copy.title}>
+            {copy.text}
+          </Alert>
+        </div>
+        <Link
+          href="/panel/basvuru"
+          className="mt-6 inline-flex h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white hover:bg-black"
+        >
+          {copy.cta}
+        </Link>
+      </Card>
+    </div>
+  );
+}

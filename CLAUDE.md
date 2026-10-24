@@ -27,15 +27,17 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - OTP: HMAC-SHA256 özet, 3 dk ömür, 5 deneme, 60 sn yeniden gönderim, saatte 5 kod. SMS sağlayıcısı soyut (`console`, `memory`; üretim için Netgsm/İleti Merkezi eklenecek).
 - Denetim kaydı: onay/ret/onboarding işlemleri `audit_logs` tablosuna yazılır.
 
-## Durum (wip/e1-auth dalı)
-Yazıldı: şema, env doğrulama, DB modülü, guard/decorator'lar, SMS ve depolama soyutlamaları, auth modülü (OTP, verify, refresh, logout).
-Sıradaki:
-1. `users` (me, onboarding), `agents` (profil, belge, submit), `admin` (onay/ret) modülleri
-2. `app.module.ts` bağlantısı, `app.setup.ts` (global prefix `api/v1`, ValidationPipe, helmet, CORS, Swagger `/docs`), health uç noktası
-3. `pnpm db:generate` ile ilk migration, `db:seed` ile `ADMIN_PHONES` rolünü atama
-4. E1 e2e testi: kayıt → OTP → onboarding → belge → submit → admin onayı
-5. Web (Next.js): giriş + admin onay paneli; Mobil (Flutter): giriş, OTP, onboarding, belge yükleme, onay bekliyor ekranları
-6. `.env.example`, README, GitHub Actions CI
+## Durum
+- **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
+- **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
+- **Mobil (E1):** giriş, kod, kayıt, ana sayfa, başvuru + belge yükleme (Flutter, go_router, dio, flutter_secure_storage, file_picker).
+- Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
+
+## Sıradaki
+1. E2 Ofis hesabı: ofis oluşturma, "Sahip" rozeti, davet / katılma talebi, onay, transfer ve bildirimler
+2. Gerçek SMS sağlayıcısı (Netgsm / İleti Merkezi) ve S3 uyumlu depolama sürücüsü
+3. KVKK aydınlatma ve kullanım koşulları nihai metinleri (şu an yer tutucu)
+4. E3 Portföy + EİDS entegrasyonu (başvuru sonucu bekleniyor)
 
 ## Komutlar
 ```

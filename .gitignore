@@ -15,7 +15,6 @@ apps/mobile/.dart_tool/
 apps/mobile/build/
 apps/mobile/.flutter-plugins*
 apps/mobile/.packages
-apps/mobile/pubspec.lock
 
 .DS_Store
 .idea/
