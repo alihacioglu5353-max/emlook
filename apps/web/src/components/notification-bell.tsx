@@ -10,6 +10,9 @@ const KEY = ["notifications"] as const;
 
 /** Bildirimin yönlendireceği sayfa */
 function targetOf(n: NotificationItem, role: Role | null): string | null {
+  const data = n.data ?? {};
+  if (n.type === "social.followed" && typeof data.userId === "string") return `/danisman/${data.userId}`;
+  if (n.type === "listing.liked" && typeof data.listingId === "string") return `/ilan/${data.listingId}`;
   if (!n.type.startsWith("office.")) return null;
   const managerTypes = [
     "office.join_requested",

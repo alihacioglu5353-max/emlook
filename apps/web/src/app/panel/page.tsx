@@ -15,9 +15,12 @@ export default function PanelHome() {
         <h1 className="text-3xl font-extrabold tracking-tight">Merhaba {first}</h1>
         <Card className="mt-8">
           <p className="text-ink-soft">
-            Portföyleri görüntüleme ve doğrulanmış danışmanlara talep bırakma özellikleri
-            yakında Emlook mobil uygulamasında.
+            Onaylı danışmanların herkese açık portföylerini akışta görebilir, beğenip
+            kaydedebilir ve danışmanları takip edebilirsin.
           </p>
+          <Link href="/akis" className="mt-4 inline-flex font-semibold text-brand hover:underline">
+            Akışa git →
+          </Link>
         </Card>
       </div>
     );

@@ -3,10 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useMe } from "@/components/app-shell";
 import { useState } from "react";
 import { EidsBadge, ListingStatusBadge, PhotoPlaceholder } from "@/components/listing-card";
+import { Avatar, FollowButton, Reactions } from "@/components/social";
 import { Alert, Card, Spinner, VerifiedIcon } from "@/components/ui";
-import { api, fileUrl, type ListingDetail } from "@/lib/api";
+import { api, fileUrl, type AgentProfileCard, type ListingDetail } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { DEAL_LABEL, formatLocation, formatPrice } from "@/lib/listing";
 
@@ -17,6 +19,7 @@ export default function ListingDetailPage() {
     queryFn: () => api<ListingDetail>(`/listings/${id}`),
   });
   const [active, setActive] = useState(0);
+  const { me } = useMe();
 
   const l = query.data;
   if (!l) {
@@ -108,6 +111,15 @@ export default function ListingDetailPage() {
             </p>
             <h1 className="mt-1 text-lg font-semibold">{l.title}</h1>
             <p className="mt-1 text-sm text-ink-soft">{formatLocation(l.location)}</p>
+            {l.status === "active" && (
+              <div className="mt-4">
+                <Reactions
+                  key={`${l.likeCount}-${l.likedByMe}-${l.savedByMe}`}
+                  listingId={l.id}
+                  initial={{ likeCount: l.likeCount, likedByMe: l.likedByMe, savedByMe: l.savedByMe }}
+                />
+              </div>
+            )}
             {l.cobrokeShare !== null && (
               <div className="mt-4 rounded-xl bg-brand-tint p-3 text-sm text-brand-ink">
                 <p className="font-bold">Komisyon paylaşımı: %{l.cobrokeShare}</p>
@@ -120,13 +132,23 @@ export default function ListingDetailPage() {
 
           <Card className="!p-6">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-soft">Danışman</p>
-            <p className="mt-2 flex items-center gap-1.5 font-semibold">
-              {l.owner.fullName ?? "Danışman"}
-              {l.owner.isVerified && (
-                <VerifiedIcon className="h-4 w-4 text-[#2f7de1]" aria-label="Onaylı danışman" />
+            <div className="mt-3 flex items-center gap-3">
+              <Avatar name={l.owner.fullName} size={44} />
+              <Link href={`/danisman/${l.owner.id}`} className="min-w-0 flex-1 hover:underline">
+                <span className="flex items-center gap-1.5 font-semibold">
+                  {l.owner.fullName ?? "Danışman"}
+                  {l.owner.isVerified && (
+                    <VerifiedIcon className="h-4 w-4 text-[#2f7de1]" aria-label="Onaylı danışman" />
+                  )}
+                </span>
+                <span className="block text-sm text-ink-soft">
+                  {l.owner.office?.name ?? "Bağımsız danışman"}
+                </span>
+              </Link>
+              {!l.isOwner && me.role !== "admin" && (
+                <OwnerFollow agentId={l.owner.id} />
               )}
-            </p>
-            <p className="text-sm text-ink-soft">{l.owner.office?.name ?? "Bağımsız danışman"}</p>
+            </div>
             <p className="mt-4 text-xs text-ink-soft">Mesajlaşma yakında.</p>
           </Card>
         </div>
@@ -155,4 +177,14 @@ export default function ListingDetailPage() {
       </div>
     </div>
   );
+}
+
+/** Detayda takip düğmesi: güncel durumu danışman kartından okur */
+function OwnerFollow({ agentId }: { agentId: string }) {
+  const q = useQuery({
+    queryKey: ["agent", agentId],
+    queryFn: () => api<AgentProfileCard>(`/agents/${agentId}`),
+  });
+  if (!q.data) return null;
+  return <FollowButton key={String(q.data.followedByMe)} agentId={agentId} initial={q.data.followedByMe} size="sm" />;
 }
