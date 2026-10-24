@@ -62,6 +62,7 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
       : me?.role === "agent"
         ? [
             { href: "/panel", label: "Genel bakış" },
+            { href: "/panel/portfoy", label: "Portföyüm" },
             { href: "/panel/basvuru", label: "Onay başvurusu" },
             { href: "/panel/ofis", label: "Ofisim" },
           ]

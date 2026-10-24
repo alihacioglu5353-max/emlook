@@ -38,7 +38,9 @@ async function handle(req: NextRequest, ctx: RouteContext<"/api/backend/[...path
     const v = res.headers.get(h);
     if (v) out.set(h, v);
   }
-  out.set("cache-control", "no-store");
+  // İlan fotoğrafları değişmez (yeni yükleme yeni kimlik alır): tarayıcıda kısa süre tutulur.
+  const isImage = res.ok && (res.headers.get("content-type") ?? "").startsWith("image/");
+  out.set("cache-control", isImage ? "private, max-age=3600" : "no-store");
   return new Response(res.body, { status: res.status, headers: out });
 }
 

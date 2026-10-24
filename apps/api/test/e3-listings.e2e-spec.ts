@@ -228,4 +228,17 @@ describe('E3 — portföy', () => {
     const other = await approvedAgent(ctx, '05321110002', 'Mehmet Demir');
     expect((await api(other).get('/listings/mine').expect(200)).body.items).toHaveLength(0);
   });
+  it('düzenlemede isteğe bağlı alanlar null ile temizlenir; ilçe değişince mahalle sıfırlanır', async () => {
+    const agent = await approvedAgent(ctx, '05321110003', 'Zeynep Kaya');
+    const c = await api(agent).post('/listings', listing({ description: 'Deniz manzaralı' })).expect(201);
+    const cleared = await api(agent)
+      .patch(`/listings/${c.body.id}`, { grossM2: null, rooms: null, description: null, neighbourhoodId: null })
+      .expect(200);
+    expect(cleared.body).toMatchObject({ grossM2: null, rooms: null, description: null, neighbourhoodId: null, netM2: 120 });
+
+    await api(agent).patch(`/listings/${c.body.id}`, { neighbourhoodId: moda }).expect(200);
+    const moved = await api(agent).patch(`/listings/${c.body.id}`, { districtId: besiktas }).expect(200);
+    expect(moved.body).toMatchObject({ districtId: besiktas, neighbourhoodId: null });
+    expect(moved.body.location.district).toBe('Beşiktaş');
+  });
 });

@@ -46,7 +46,7 @@ export default function PanelHome() {
     approved: {
       tone: "ok" as const,
       title: "Onaylı danışmansın",
-      text: "Profilinde onay rozeti görünüyor. Portföy paylaşımı ve eşleşme özellikleri yakında açılacak.",
+      text: "Profilinde onay rozeti görünüyor. Portföyünü ekleyip EİDS doğrulamasıyla yayına alabilirsin.",
       cta: "Başvuru detayları",
     },
   }[status];
