@@ -421,6 +421,7 @@ export interface InterestItem {
   };
   requester: { id: string; fullName: string | null; isAgent: boolean; isVerified: boolean };
   owner: { id: string; fullName: string | null };
+  conversationId: string | null;
 }
 
 export interface InterestList {
@@ -446,4 +447,39 @@ export interface SearchResult {
   total: number;
   items: ListingCard[];
   nextOffset: number | null;
+}
+
+// ---- E7 · Mesajlaşma ----
+
+export interface ConversationSummary {
+  id: string;
+  other: { id: string; fullName: string | null; isAgent: boolean; isVerified: boolean; officeName: string | null };
+  lastMessage: { body: string; kind: MessageKind; mine: boolean; createdAt: string } | null;
+  unread: number;
+  lastMessageAt: string | null;
+}
+
+export type MessageKind = "text" | "listing" | "system";
+
+export interface ChatMessage {
+  id: string;
+  kind: MessageKind;
+  body: string;
+  senderId: string | null;
+  mine: boolean;
+  createdAt: string;
+  cursor: string;
+  listing: {
+    id: string;
+    title: string;
+    price: number;
+    dealType: DealType;
+    status: ListingStatus;
+    coverPhoto: string | null;
+  } | null;
+}
+
+export interface MessagePage {
+  items: ChatMessage[];
+  nextCursor: string | null;
 }

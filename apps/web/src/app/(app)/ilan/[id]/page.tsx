@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useMe } from "@/components/app-shell";
 import { useState } from "react";
 import { EidsBadge, ListingStatusBadge, PhotoPlaceholder } from "@/components/listing-card";
+import { useStartConversation } from "@/components/chat";
 import { Avatar, FollowButton, Reactions } from "@/components/social";
 import { Alert, Button, Card, Spinner, Textarea, VerifiedIcon } from "@/components/ui";
 import { api, fileUrl, type AgentProfileCard, type InterestItem, type ListingDetail } from "@/lib/api";
@@ -149,7 +150,12 @@ export default function ListingDetailPage() {
                 <OwnerFollow agentId={l.owner.id} />
               )}
             </div>
-            {!l.isOwner && l.status === "active" && me.role !== "admin" && <InterestBox listingId={l.id} />}
+            {!l.isOwner && l.status === "active" && me.role !== "admin" && (
+              <>
+                <InterestBox listingId={l.id} />
+                <WriteToOwner ownerId={l.owner.id} listingId={l.id} />
+              </>
+            )}
           </Card>
         </div>
       </div>
@@ -221,7 +227,12 @@ function InterestBox({ listingId }: { listingId: string }) {
     <div className="mt-5 border-t border-line pt-4">
       {i?.status === "accepted" ? (
         <p className="rounded-xl bg-ok-tint p-3 text-sm font-semibold text-ok">
-          Eşleştiniz. Mesajlaşma yakında açılacak.
+          Eşleştiniz.{" "}
+          {i.conversationId && (
+            <Link href={`/mesajlar/${i.conversationId}`} className="underline">
+              Mesajlaşmaya git
+            </Link>
+          )}
         </p>
       ) : i?.status === "pending" ? (
         <div className="space-y-2">
@@ -258,6 +269,19 @@ function InterestBox({ listingId }: { listingId: string }) {
         </div>
       )}
       {error && <p className="mt-2 text-sm text-brand">{error}</p>}
+    </div>
+  );
+}
+
+/** İlan kartıyla birlikte danışmana mesaj */
+function WriteToOwner({ ownerId, listingId }: { ownerId: string; listingId: string }) {
+  const chat = useStartConversation();
+  return (
+    <div className="mt-3">
+      <Button variant="ghost" className="w-full" loading={chat.busy} onClick={() => chat.start(ownerId, listingId)}>
+        Danışmana mesaj gönder
+      </Button>
+      {chat.error && <p className="mt-2 text-sm text-brand">{chat.error}</p>}
     </div>
   );
 }

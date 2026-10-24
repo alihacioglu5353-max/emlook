@@ -4,6 +4,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useMe } from "@/components/app-shell";
+import { useStartConversation } from "@/components/chat";
 import { ListingGrid } from "@/components/listing-grid";
 import { Avatar, FollowButton, PersonRow } from "@/components/social";
 import { Alert, Button, EmptyState, RoleBadge, Spinner, VerifiedIcon } from "@/components/ui";
@@ -18,6 +19,7 @@ export default function AgentProfilePage() {
   const [tab, setTab] = useState<Tab>("listings");
   const key = ["agent", id];
   const card = useQuery({ queryKey: key, queryFn: () => api<AgentProfileCard>(`/agents/${id}`) });
+  const chat = useStartConversation();
 
   const a = card.data;
   if (!a) {
@@ -61,6 +63,16 @@ export default function AgentProfilePage() {
             {a.businessName && <p className="mt-1 text-sm text-ink-soft">{a.businessName}</p>}
             {a.bio && <p className="mt-3 max-w-2xl whitespace-pre-line text-[15px]">{a.bio}</p>}
           </div>
+          {!isMe && me.role !== "admin" && (
+            <button
+              type="button"
+              onClick={() => chat.start(a.id)}
+              disabled={chat.busy}
+              className="inline-flex h-10 items-center rounded-full border border-line bg-surface px-5 text-sm font-semibold hover:border-ink-soft disabled:opacity-60"
+            >
+              Mesaj gönder
+            </button>
+          )}
           {!isMe && (
             <FollowButton
               agentId={a.id}
@@ -73,6 +85,7 @@ export default function AgentProfilePage() {
             />
           )}
         </div>
+        {chat.error && <p className="mt-3 text-sm text-brand">{chat.error}</p>}
         <div className="mt-6 flex gap-1 border-t border-line pt-4" role="tablist">
           {tabs.map(([t, label, n]) => (
             <button
