@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* Emlook kimliği: sıcak kırık beyaz zemin, koyu mürekkep, kırmızı vurgu */
+:root {
+  --paper: #f6f3ef;
+  --surface: #fffdfb;
+  --ink: #16171c;
+  --ink-soft: #5b5d66;
+  --line: #e6e1da;
+  --brand: #c8283f;
+  --brand-ink: #a51f33;
+  --brand-tint: #fbe7ea;
+  --ok: #1f8a5b;
+  --ok-tint: #e3f4ec;
+  --warn: #a8670a;
+  --warn-tint: #fdf1dc;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-tint: var(--brand-tint);
+  --color-ok: var(--ok);
+  --color-ok-tint: var(--ok-tint);
+  --color-warn: var(--warn);
+  --color-warn-tint: var(--warn-tint);
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
