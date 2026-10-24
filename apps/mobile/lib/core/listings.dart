@@ -1,5 +1,7 @@
 // E3–E6 · Portföy, akış, keşfet ve arama modelleri ile etiketler.
 
+import 'models.dart';
+
 const dealLabels = {'sale': 'Satılık', 'rent': 'Kiralık'};
 
 const categoryLabels = {
@@ -105,6 +107,8 @@ class ListingCard {
     required this.ownerName,
     required this.ownerVerified,
     required this.ownerOffice,
+    this.ownerAvatar,
+    this.ownerBadge,
     required this.coverPhoto,
     required this.photoCount,
     required this.likeCount,
@@ -129,6 +133,8 @@ class ListingCard {
   final String? ownerName;
   final bool ownerVerified;
   final String? ownerOffice;
+  final AvatarData? ownerAvatar;
+  final String? ownerBadge;
   final String? coverPhoto;
   final int photoCount;
   int likeCount;
@@ -162,6 +168,8 @@ class ListingCard {
       ownerName: owner['fullName'] as String?,
       ownerVerified: owner['isVerified'] as bool? ?? false,
       ownerOffice: owner['officeName'] as String?,
+      ownerAvatar: AvatarData.fromJson(owner['avatar']),
+      ownerBadge: owner['badge'] as String?,
       coverPhoto: j['coverPhoto'] as String?,
       photoCount: (j['photoCount'] as num?)?.toInt() ?? 0,
       likeCount: (j['likeCount'] as num?)?.toInt() ?? 0,
@@ -358,11 +366,17 @@ class AgentProfile {
     required this.followingCount,
     required this.activeListingCount,
     required this.followedByMe,
+    this.avatar,
+    this.badge,
+    this.score,
   });
 
   final String id;
   final String? fullName;
   final String? businessName;
+  final AvatarData? avatar;
+  final String? badge;
+  final int? score;
   final String place;
   final String? bio;
   final bool isVerified;
@@ -388,6 +402,9 @@ class AgentProfile {
       followingCount: (j['followingCount'] as num?)?.toInt() ?? 0,
       activeListingCount: (j['activeListingCount'] as num?)?.toInt() ?? 0,
       followedByMe: j['followedByMe'] as bool? ?? false,
+      avatar: AvatarData.fromJson(j['avatar']),
+      badge: j['badge'] as String?,
+      score: (j['score'] as num?)?.toInt(),
     );
   }
 }

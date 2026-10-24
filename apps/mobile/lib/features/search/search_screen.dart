@@ -355,11 +355,11 @@ class _FilterSheetState extends State<_FilterSheet> {
             const Text('Filtreler', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
             Wrap(spacing: 8, children: [
-              for (final (v, l) in const [('sale', 'Satılık'), ('rent', 'Kiralık')])
+              for (final (v, l) in const [(null, 'Tümü'), ('sale', 'Satılık'), ('rent', 'Kiralık')])
                 ChoiceChip(
                   label: Text(l),
                   selected: _f['dealType'] == v,
-                  onSelected: (s) => _set('dealType', s ? v : null),
+                  onSelected: (_) => _set('dealType', v),
                 ),
             ]),
             const SizedBox(height: 12),
@@ -400,11 +400,11 @@ class _FilterSheetState extends State<_FilterSheet> {
             const SizedBox(height: 12),
             const Text('Oda', style: TextStyle(fontWeight: FontWeight.w600)),
             Wrap(spacing: 6, children: [
-              for (final r in const ['1+1', '2+1', '3+1', '4+1', '5+1'])
+              for (final r in const [null, '1+1', '2+1', '3+1', '4+1', '5+1'])
                 ChoiceChip(
-                  label: Text(r),
+                  label: Text(r ?? 'Tümü'),
                   selected: _f['rooms'] == r,
-                  onSelected: (s) => _set('rooms', s ? r : null),
+                  onSelected: (_) => _set('rooms', r),
                 ),
             ]),
             const SizedBox(height: 12),

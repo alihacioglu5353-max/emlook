@@ -24,6 +24,9 @@ class Me {
     this.officeRole,
     this.officeActive = false,
     this.marketingConsent = false,
+    this.avatar,
+    this.badge,
+    this.score,
   });
 
   final String id;
@@ -43,6 +46,11 @@ class Me {
 
   /// Ticari elektronik ileti izni (en son rıza kaydı)
   final bool marketingConsent;
+
+  /// Profil resmi ve danışman rozeti
+  final AvatarData? avatar;
+  final String? badge;
+  final int? score;
 
   bool get isAgent => role == 'agent';
   bool get isVerified => verificationStatus == VerificationStatus.approved;
@@ -66,6 +74,9 @@ class Me {
       officeRole: office == null ? null : OfficeRole.parse(office['role']),
       officeActive: office?['status'] == 'active',
       marketingConsent: marketing?['granted'] as bool? ?? false,
+      avatar: AvatarData.fromJson(j['avatar']),
+      badge: agent?['badge'] as String?,
+      score: (agent?['score'] as num?)?.toInt(),
     );
   }
 }
@@ -297,4 +308,19 @@ class AppNotification {
         createdAt: DateTime.parse(j['createdAt'] as String),
         data: (j['data'] as Map<String, dynamic>?) ?? const {},
       );
+}
+
+/// API'nin döndürdüğü avatar: `{kind: photo, url}` | `{kind: preset, preset: p01}` | null
+class AvatarData {
+  const AvatarData({required this.kind, this.url, this.preset});
+  final String kind;
+  final String? url;
+  final String? preset;
+
+  static AvatarData? fromJson(Object? j) {
+    if (j is! Map<String, dynamic>) return null;
+    final kind = j['kind'] as String?;
+    if (kind == null) return null;
+    return AvatarData(kind: kind, url: j['url'] as String?, preset: j['preset'] as String?);
+  }
 }
