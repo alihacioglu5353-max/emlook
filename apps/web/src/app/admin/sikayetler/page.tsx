@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 import { ReasonAction } from "@/components/admin";
-import { Alert, Button, EmptyState, Eyebrow, Spinner } from "@/components/ui";
+import { Alert, Button, EmptyState, Spinner } from "@/components/ui";
 import { api, type AdminReport } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
 import { REPORT_REASON_LABEL } from "@/lib/listing";
@@ -32,10 +32,6 @@ export default function AdminReports() {
 
   return (
     <div className="max-w-4xl space-y-6">
-      <div>
-        <Eyebrow>Yönetim</Eyebrow>
-        <h1 className="text-3xl font-extrabold tracking-tight">Şikâyetler</h1>
-      </div>
       <div className="flex gap-1">
         {TABS.map(([s, label]) => (
           <button

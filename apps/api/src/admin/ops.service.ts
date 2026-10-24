@@ -71,6 +71,82 @@ export class AdminOpsService {
     );
   }
 
+  /** Panel grafikleri: haftalık/aylık seriler, dağılımlar, son etkinlik, öne çıkanlar */
+  async charts() {
+    const rows = async <T>(q: SQL) => (await this.db.execute<T & Record<string, unknown>>(q)).rows as T[];
+    const weeks = sql`generate_series(date_trunc('week', now()) - interval '11 weeks', date_trunc('week', now()), interval '1 week')`;
+
+    const [weekly, monthly, categories, deals, topDistricts, funnel, activity, topAgents, latest, prev] = await Promise.all([
+      rows<{ week: string; agents: number; consumers: number; listings: number; interests: number; messages: number }>(sql`
+        select w::date::text as week,
+          (select count(*)::int from users u where u.role = 'agent' and date_trunc('week', u.created_at) = w) as agents,
+          (select count(*)::int from users u where u.role = 'consumer' and date_trunc('week', u.created_at) = w) as consumers,
+          (select count(*)::int from listings l where date_trunc('week', l.published_at) = w) as listings,
+          (select count(*)::int from interests i where date_trunc('week', i.created_at) = w) as interests,
+          (select count(*)::int from messages m where m.kind <> 'system' and date_trunc('week', m.created_at) = w) as messages
+        from ${weeks} w order by w`),
+      rows<{ month: string; volume: number; revenue: number; count: number }>(sql`
+        select m::date::text as month,
+          coalesce((select sum(p.amount) from payment_requests p where p.status = 'paid' and date_trunc('month', p.paid_at) = m), 0)::bigint as volume,
+          coalesce((select sum(s.amount) from payment_splits s join payment_requests p on p.id = s.request_id
+                    where s.kind = 'platform' and p.status = 'paid' and date_trunc('month', p.paid_at) = m), 0)::bigint as revenue,
+          (select count(*)::int from payment_requests p where p.status = 'paid' and date_trunc('month', p.paid_at) = m) as count
+        from generate_series(date_trunc('month', now()) - interval '5 months', date_trunc('month', now()), interval '1 month') m
+        order by m`),
+      rows<{ category: string; count: number }>(sql`
+        select category::text, count(*)::int from listings where status = 'active' group by category order by 2 desc`),
+      rows<{ dealType: string; count: number; avgPrice: number }>(sql`
+        select deal_type::text as "dealType", count(*)::int, coalesce(avg(price), 0)::bigint as "avgPrice"
+        from listings where status = 'active' group by deal_type`),
+      rows<{ district: string; count: number; avgSale: number | null }>(sql`
+        select d.name as district, count(*)::int,
+          avg(l.price) filter (where l.deal_type = 'sale')::bigint as "avgSale"
+        from listings l join districts d on d.id = l.district_id
+        where l.status = 'active' group by d.name order by 2 desc, 1 limit 6`),
+      rows<{ status: string; count: number }>(sql`
+        select verification_status::text as status, count(*)::int from agent_profiles group by 1`),
+      rows<{ id: string; action: string; targetType: string; targetId: string | null; actor: string | null; at: string }>(sql`
+        select a.id, a.action, a.target_type as "targetType", a.target_id as "targetId", u.full_name as actor, a.created_at as at
+        from audit_logs a left join users u on u.id = a.actor_id
+        order by a.created_at desc limit 10`),
+      rows<{ id: string; fullName: string; office: string | null; listings: number; likes: number; matches: number }>(sql`
+        select u.id, u.full_name as "fullName",
+          (select o.name from office_memberships m join offices o on o.id = m.office_id
+            where m.user_id = u.id and m.status = 'active' limit 1) as office,
+          (select count(*)::int from listings l where l.owner_id = u.id and l.status = 'active') as listings,
+          (select count(*)::int from listing_likes k join listings l on l.id = k.listing_id where l.owner_id = u.id) as likes,
+          (select count(*)::int from interests i where i.owner_id = u.id and i.status = 'accepted') as matches
+        from users u where u.role = 'agent' and u.status = 'active'
+        order by listings desc, likes desc limit 5`),
+      rows<{ id: string; title: string; price: number; dealType: string; district: string; owner: string; photoId: string | null; publishedAt: string }>(sql`
+        select l.id, l.title, l.price, l.deal_type::text as "dealType", d.name as district, u.full_name as owner,
+          (select p.id from listing_photos p where p.listing_id = l.id order by p.position limit 1) as "photoId",
+          l.published_at as "publishedAt"
+        from listings l join districts d on d.id = l.district_id join users u on u.id = l.owner_id
+        where l.status = 'active' order by l.published_at desc nulls last limit 6`),
+      rows<{ users: number; listings: number; messages: number; interests: number }>(sql`
+        select
+          (select count(*)::int from users where created_at between now() - interval '14 days' and now() - interval '7 days') as users,
+          (select count(*)::int from listings where published_at between now() - interval '14 days' and now() - interval '7 days') as listings,
+          (select count(*)::int from messages where created_at between now() - interval '14 days' and now() - interval '7 days') as messages,
+          (select count(*)::int from interests where created_at between now() - interval '14 days' and now() - interval '7 days') as interests`),
+    ]);
+    const num = <T extends Record<string, unknown>>(list: T[], keys: (keyof T)[]) =>
+      list.map((r) => ({ ...r, ...Object.fromEntries(keys.map((k) => [k, r[k] == null ? null : Number(r[k])])) }));
+    return {
+      weekly,
+      monthly: num(monthly, ['volume', 'revenue']),
+      categories,
+      deals: num(deals, ['avgPrice']),
+      topDistricts: num(topDistricts, ['avgSale']),
+      funnel,
+      activity,
+      topAgents,
+      latest: num(latest, ['price']),
+      previousWeek: prev[0],
+    };
+  }
+
   // ---- Kullanıcılar ----
 
   async users(q: AdminUsersQuery) {

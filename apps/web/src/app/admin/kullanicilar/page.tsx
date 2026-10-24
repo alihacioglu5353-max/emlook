@@ -2,9 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
 import { Pager } from "@/components/admin";
-import { Alert, Button, EmptyState, Eyebrow, Spinner, StatusBadge } from "@/components/ui";
+import { Alert, Button, EmptyState, Spinner, StatusBadge } from "@/components/ui";
 import { api, type AdminUserRow, type Role } from "@/lib/api";
 import { formatPhone, timeAgo } from "@/lib/format";
 
@@ -12,8 +13,22 @@ const ROLE: Record<Role, string> = { agent: "Danışman", consumer: "Mülk sahib
 const PAGE = 30;
 
 export default function AdminUsers() {
-  const [text, setText] = useState("");
-  const [q, setQ] = useState("");
+  return (
+    <Suspense fallback={<Spinner />}>
+      <WithQuery />
+    </Suspense>
+  );
+}
+
+/** Üst bardaki aramadan ?q= ile gelinebilir; arama değişince liste baştan kurulur */
+function WithQuery() {
+  const q = useSearchParams().get("q") ?? "";
+  return <Users key={q} initial={q} />;
+}
+
+function Users({ initial }: { initial: string }) {
+  const [text, setText] = useState(initial);
+  const [q, setQ] = useState(initial);
   const [role, setRole] = useState<Role | "">("");
   const [status, setStatus] = useState<"" | "active" | "suspended">("");
   const [offset, setOffset] = useState(0);
@@ -36,10 +51,6 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <Eyebrow>Yönetim</Eyebrow>
-        <h1 className="text-3xl font-extrabold tracking-tight">Kullanıcılar</h1>
-      </div>
       <form onSubmit={submit} className="flex flex-wrap gap-2">
         <input
           type="search"

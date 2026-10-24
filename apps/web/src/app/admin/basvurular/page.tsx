@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert, Card, Eyebrow, Spinner, StatusBadge } from "@/components/ui";
+import { Alert, Card, Spinner, StatusBadge } from "@/components/ui";
 import { api, type AdminListItem, type VerificationStatus } from "@/lib/api";
 import { STATUS_LABEL, formatDate, formatPhone } from "@/lib/format";
 
@@ -29,13 +29,11 @@ export default function AdminVerifications() {
 
   return (
     <div>
-      <Eyebrow>Yönetim</Eyebrow>
-      <h1 className="text-3xl font-extrabold tracking-tight">Danışman başvuruları</h1>
-      <p className="mt-2 text-ink-soft">
+      <p className="text-sm text-ink-soft">
         Yetki belgesini kontrol et, uygun başvuruları onayla. Bekleyenler en eskiden başlar.
       </p>
 
-      <div className="mt-8 flex flex-wrap gap-2" role="tablist">
+      <div className="mt-5 flex flex-wrap gap-2" role="tablist">
         {TABS.map((t) => (
           <button
             key={t}

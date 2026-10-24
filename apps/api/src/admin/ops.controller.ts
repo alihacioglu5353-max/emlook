@@ -28,6 +28,12 @@ export class AdminOpsController {
     return this.ops.dashboard();
   }
 
+  @Get('dashboard/charts')
+  @ApiOperation({ summary: 'Panel grafikleri: haftalık/aylık seriler, dağılımlar, son etkinlik' })
+  charts() {
+    return this.ops.charts();
+  }
+
   @Get('users')
   users(@Query() q: AdminUsersQuery) {
     return this.ops.users(q);

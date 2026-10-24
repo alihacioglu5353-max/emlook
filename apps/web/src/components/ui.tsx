@@ -5,23 +5,23 @@ import { STATUS_LABEL } from "@/lib/format";
 const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
 
 /** Emlook işareti: çatılı "e" ve kelime markası */
-export function Logo({ className, light }: { className?: string; light?: boolean }) {
+export function Logo({ className, light, mono, markOnly }: { className?: string; light?: boolean; mono?: boolean; markOnly?: boolean }) {
   return (
     <span className={cx("inline-flex items-center gap-2", className)}>
       <svg viewBox="0 0 32 32" className="h-7 w-7" aria-hidden>
         <path
           d="M16 3 L28 12 V16 H8.5 C9.4 21 13 24 17.5 24 C20.5 24 23 22.8 25 21 L28 24.5 C25.4 27 21.6 29 17.3 29 C9.4 29 4 23.2 4 15.6 V12 Z M9 12 H23 L16 6.9 Z"
-          fill="var(--brand)"
+          fill={mono ? "var(--surface)" : "var(--brand)"}
         />
       </svg>
-      <span
+      {!markOnly && <span
         className={cx(
           "text-[1.4rem] font-extrabold tracking-tight",
           light ? "text-surface" : "text-ink",
         )}
       >
         emlook
-      </span>
+      </span>}
     </span>
   );
 }

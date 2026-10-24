@@ -20,3 +20,6 @@ apps/mobile/.packages
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Demo ilan fotoğrafları (db:seed-demo indirir)
+apps/api/demo-photos/

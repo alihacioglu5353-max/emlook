@@ -564,6 +564,19 @@ export type AdminDashboard = Record<
   number
 >;
 
+export interface AdminCharts {
+  weekly: { week: string; agents: number; consumers: number; listings: number; interests: number; messages: number }[];
+  monthly: { month: string; volume: number; revenue: number; count: number }[];
+  categories: { category: string; count: number }[];
+  deals: { dealType: "sale" | "rent"; count: number; avgPrice: number }[];
+  topDistricts: { district: string; count: number; avgSale: number | null }[];
+  funnel: { status: string; count: number }[];
+  activity: { id: string; action: string; targetType: string; targetId: string | null; actor: string | null; at: string }[];
+  topAgents: { id: string; fullName: string; office: string | null; listings: number; likes: number; matches: number }[];
+  latest: { id: string; title: string; price: number; dealType: string; district: string; owner: string; photoId: string | null; publishedAt: string }[];
+  previousWeek: { users: number; listings: number; messages: number; interests: number };
+}
+
 export interface AdminUserRow {
   id: string;
   fullName: string | null;
