@@ -1,14 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMe } from "@/components/app-shell";
 import { useState } from "react";
 import { EidsBadge, ListingStatusBadge, PhotoPlaceholder } from "@/components/listing-card";
 import { Avatar, FollowButton, Reactions } from "@/components/social";
-import { Alert, Card, Spinner, VerifiedIcon } from "@/components/ui";
-import { api, fileUrl, type AgentProfileCard, type ListingDetail } from "@/lib/api";
+import { Alert, Button, Card, Spinner, Textarea, VerifiedIcon } from "@/components/ui";
+import { api, fileUrl, type AgentProfileCard, type InterestItem, type ListingDetail } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { DEAL_LABEL, formatLocation, formatPrice } from "@/lib/listing";
 
@@ -149,7 +149,7 @@ export default function ListingDetailPage() {
                 <OwnerFollow agentId={l.owner.id} />
               )}
             </div>
-            <p className="mt-4 text-xs text-ink-soft">Mesajlaşma yakında.</p>
+            {!l.isOwner && l.status === "active" && me.role !== "admin" && <InterestBox listingId={l.id} />}
           </Card>
         </div>
       </div>
@@ -187,4 +187,77 @@ function OwnerFollow({ agentId }: { agentId: string }) {
   });
   if (!q.data) return null;
   return <FollowButton key={String(q.data.followedByMe)} agentId={agentId} initial={q.data.followedByMe} size="sm" />;
+}
+
+/** "İlgileniyorum": ilan sahibine el sıkışma isteği */
+function InterestBox({ listingId }: { listingId: string }) {
+  const qc = useQueryClient();
+  const key = ["my-interest", listingId];
+  const q = useQuery({
+    queryKey: key,
+    queryFn: () => api<{ interest: InterestItem | null }>(`/listings/${listingId}/interest`),
+  });
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function run(fn: () => Promise<unknown>) {
+    setBusy(true);
+    setError(null);
+    try {
+      await fn();
+      await qc.invalidateQueries({ queryKey: key });
+      void qc.invalidateQueries({ queryKey: ["interests"] });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!q.data) return null;
+  const i = q.data.interest;
+  return (
+    <div className="mt-5 border-t border-line pt-4">
+      {i?.status === "accepted" ? (
+        <p className="rounded-xl bg-ok-tint p-3 text-sm font-semibold text-ok">
+          Eşleştiniz. Mesajlaşma yakında açılacak.
+        </p>
+      ) : i?.status === "pending" ? (
+        <div className="space-y-2">
+          <p className="rounded-xl bg-warn-tint p-3 text-sm text-warn">
+            <span className="font-semibold">İlgin iletildi.</span> İlan sahibinin yanıtı bekleniyor.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => run(() => api(`/interests/${i.id}/withdraw`, { method: "POST" }))}
+            className="text-sm font-semibold text-ink-soft hover:text-ink"
+          >
+            Geri çek
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <Textarea
+            aria-label="İlan sahibine not"
+            placeholder="İsteğe bağlı not: alıcım hazır, hafta sonu gösterim…"
+            maxLength={500}
+            rows={2}
+            className="!min-h-0 text-sm"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+          <Button
+            className="w-full"
+            loading={busy}
+            onClick={() => run(() => api(`/listings/${listingId}/interest`, { json: { note: note.trim() || undefined } }))}
+          >
+            İlgileniyorum
+          </Button>
+        </div>
+      )}
+      {error && <p className="mt-2 text-sm text-brand">{error}</p>}
+    </div>
+  );
 }
