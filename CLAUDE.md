@@ -56,6 +56,16 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - Beğeni/kaydetme idempotent, yalnızca yayındaki ilan (`/listings/:id/like|save`); `GET /me/saved` hâlâ görünenler. Yeni takip/beğeni → bildirim (`social.followed`, `listing.liked`).
 - Web: `(app)` rota grubu (tüm roller): `/akis`, `/ilan/[id]`, `/danisman/[id]`, `/kaydedilenler`. `ListingGrid` (useInfiniteQuery), `Reactions`, `FollowButton`.
 
+## E5 tasarımı (keşfet ve eşleşme)
+- `discover/` modülü. `GET /discover?dealType&cityCode`: karar verilmemiş, görebildiğin yayındaki ilanlar; kural tabanlı puan
+  (profil ili +30, ilçesi +20, ağ +15, EİDS +10, 3+ foto +5, paylaşım/10 danışmana, tazelik 0–30).
+- `listing_swipes` (kullanıcı+ilan benzersiz): `POST /discover/:id/swipe {like|pass, note?}`; like → `interests` (el sıkışma) + bildirim.
+  `POST /discover/undo` son kararı 10 dk içinde geri alır (bekleyen ilgi `withdrawn`).
+- `interests`: `pending → accepted | declined | withdrawn`; ilan+kişi başına tek açık/kabul edilmiş kayıt (kısmi benzersiz indeks).
+  Detaydan `POST /listings/:id/interest`; `GET /interests/incoming|outgoing` (sayılarla); sahip kabul/ret, talep eden geri çeker.
+  Kabul = eşleşme → E7'de konuşma buradan açılacak. Mülk sahipleri de ilgi gösterebilir (alıcı adayı).
+- Web: `/kesfet` (sürükle/klavye ← →, geri al), `/talepler` (Gelen / Gönderdiğim), ilan detayında "İlgileniyorum".
+
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
@@ -63,11 +73,12 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - **E2 tamam (API, web, mobil):** ofis açma + admin onayı, arama/profil, talep, davet, transfer, roller, çıkarma, ayrılma, sahiplik devri, bildirimler. Toplam 28 e2e testi.
 - **E3 tamam (API, web):** ilan girişi, konum, fotoğraf, EİDS soyutlaması, yayın kuralları, görünürlük. Toplam 35 e2e testi. Mobil ekranlar en sona.
 - **E4 tamam (API, web):** akış (Emlook Ağı / Benim Ağım), takip, beğeni, kaydetme, öneriler, danışman profili. Toplam 39 e2e testi.
+- **E5 tamam (API, web):** keşfet kartları, kaydırma, geri alma, ilgi/eşleşme akışı. Toplam 43 e2e testi.
 - **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
-1. E5 Keşfet → E6 Arama → E7 Mesajlaşma → E8 Ödeme → E9 Admin; mobil ekranlar ve testleri en sonda
+1. E6 Arama → E7 Mesajlaşma → E8 Ödeme → E9 Admin; mobil ekranlar ve testleri en sonda
 2. Gerçek SMS sağlayıcısı (Netgsm / İleti Merkezi) ve S3 uyumlu depolama sürücüsü
 3. KVKK aydınlatma ve kullanım koşulları nihai metinleri (şu an yer tutucu)
 4. E7 push bildirimleri (FCM/APNs) — `NotificationsService.notify` üzerinden

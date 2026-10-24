@@ -393,3 +393,37 @@ export interface AgentProfileCard {
   activeListingCount: number;
   followedByMe: boolean;
 }
+
+// ---- E5 · Keşfet ----
+
+export interface DiscoverResponse {
+  items: ListingCard[];
+  canUndo: boolean;
+}
+
+export type InterestStatus = "pending" | "accepted" | "declined" | "withdrawn";
+
+export interface InterestItem {
+  id: string;
+  status: InterestStatus;
+  note: string | null;
+  fromDiscover: boolean;
+  createdAt: string;
+  decidedAt: string | null;
+  listing: {
+    id: string;
+    title: string;
+    dealType: DealType;
+    price: number;
+    status: ListingStatus;
+    location: { city: string; district: string };
+    coverPhoto: string | null;
+  };
+  requester: { id: string; fullName: string | null; isAgent: boolean; isVerified: boolean };
+  owner: { id: string; fullName: string | null };
+}
+
+export interface InterestList {
+  items: InterestItem[];
+  counts: Record<InterestStatus, number>;
+}

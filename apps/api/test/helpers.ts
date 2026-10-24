@@ -39,7 +39,7 @@ export async function createTestApp(): Promise<TestContext> {
 
 export async function resetDb(ctx: TestContext): Promise<void> {
   await ctx.db.execute(sql`
-    TRUNCATE listing_likes, listing_saves, listing_photos, listings, follows,
+    TRUNCATE interests, listing_swipes, listing_likes, listing_saves, listing_photos, listings, follows,
              notifications, office_memberships, offices, audit_logs, consents,
              sessions, verification_documents, agent_profiles, otp_codes, users
              RESTART IDENTITY CASCADE

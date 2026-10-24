@@ -505,6 +505,67 @@ export const follows = pgTable(
   ],
 );
 
+// ---- E5 · Keşfet ve eşleşme ----
+
+export const swipeDecision = pgEnum('swipe_decision', ['like', 'pass']);
+
+/** Keşfet kartında verilen karar; aynı ilan bir daha gösterilmez (geri alınana kadar). */
+export const listingSwipes = pgTable(
+  'listing_swipes',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    decision: swipeDecision('decision').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('listing_swipes_pair_idx').on(t.userId, t.listingId),
+    index('listing_swipes_user_time_idx').on(t.userId, t.createdAt),
+  ],
+);
+
+export const interestStatus = pgEnum('interest_status', ['pending', 'accepted', 'declined', 'withdrawn']);
+
+/**
+ * "İlgileniyorum" (el sıkışma): bir kullanıcının ilana ilgisi. İlan sahibi
+ * kabul ederse eşleşme olur ve mesajlaşma (E7) açılır.
+ */
+export const interests = pgTable(
+  'interests',
+  {
+    id: id(),
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    requesterId: uuid('requester_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    status: interestStatus('status').notNull().default('pending'),
+    note: text('note'),
+    /** Keşfet kaydırmasından mı geldi (geri almada birlikte geri çekilir) */
+    swipeId: uuid('swipe_id').references(() => listingSwipes.id, { onDelete: 'set null' }),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    // İlan + kişi başına tek açık/kabul edilmiş ilgi
+    uniqueIndex('interests_open_idx')
+      .on(t.listingId, t.requesterId)
+      .where(sql`status in ('pending', 'accepted')`),
+    index('interests_owner_idx').on(t.ownerId, t.status),
+    index('interests_requester_idx').on(t.requesterId, t.status),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type VerificationDocument = typeof verificationDocuments.$inferSelect;
@@ -523,3 +584,5 @@ export type ListingCategory = (typeof listingCategory.enumValues)[number];
 export type ListingVisibility = (typeof listingVisibility.enumValues)[number];
 export type ListingStatus = (typeof listingStatus.enumValues)[number];
 export type EidsStatus = (typeof eidsStatus.enumValues)[number];
+export type Interest = typeof interests.$inferSelect;
+export type InterestStatus = (typeof interestStatus.enumValues)[number];
