@@ -59,8 +59,13 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
   const nav =
     me?.role === "admin"
       ? [
-          { href: "/admin", label: "Danışman başvuruları" },
-          { href: "/admin/ofisler", label: "Ofis başvuruları" },
+          { href: "/admin", label: "Özet" },
+          { href: "/admin/basvurular", label: "Başvurular" },
+          { href: "/admin/ofisler", label: "Ofisler" },
+          { href: "/admin/kullanicilar", label: "Kullanıcılar" },
+          { href: "/admin/ilanlar", label: "İlanlar" },
+          { href: "/admin/sikayetler", label: "Şikâyetler" },
+          { href: "/admin/odemeler", label: "Ödemeler" },
         ]
       : me?.role === "agent"
         ? [

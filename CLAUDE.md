@@ -102,6 +102,14 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - Ortam: `PAYMENT_PROVIDER`, `PAYMENT_WEBHOOK_SECRET` (üretimde ≥32), `PLATFORM_FEE_BPS` (500, yer tutucu), `VAT_RATE_BPS` (2000), `PAYMENT_LINK_DAYS`, `PUBLIC_WEB_URL`.
 - Web: `/panel/odemeler` (özet, IBAN, talepler), `/yeni` (danışman arama, bölüşüm önizlemesi), `/[id]` (bağlantı kopyala, WhatsApp, iptal), herkese açık `/odeme/[token]`.
 
+## E9 tasarımı (yönetim)
+- `admin/ops.*`: `GET /admin/dashboard` (yapılacaklar + kullanıcı/portföy/etkileşim/ödeme göstergeleri), `/admin/users` (ad/telefon arama, rol/durum),
+  `/admin/users/:id` (+ istatistik), `suspend {reason}` (oturumlar iptal; ilanlar akış/arama/detaydan gizlenir) / `reactivate`.
+- İlan: `/admin/listings?q&status&eids`, `remove {reason}` (açık şikâyetler çözülür, sahibine bildirim), `restore` (pasif), `eids {verified|failed, message}`.
+- Şikâyet: kullanıcı `POST /listings/:id/report {reason, note}` (kullanıcı+ilan başına tek açık); `/admin/reports?status`, `dismiss`.
+- `/admin/payments?status` (platform bedeli, fatura durumu). Tüm işlemler `audit_logs`'a yazılır.
+- Web: `/admin` özet, `/admin/basvurular`, `/ofisler`, `/kullanicilar(/[id])`, `/ilanlar`, `/sikayetler`, `/odemeler`; ilan detayında "Bu ilanı şikâyet et".
+
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
@@ -113,11 +121,12 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - **E6 tamam (API, web):** serbest metin ayrıştırma, filtreler, sıralama, danışman araması. Toplam 47 e2e + 28 birim testi.
 - **E7 tamam (API, web):** konuşmalar, ilan kartı paylaşımı, okunmamış, eşleşme konuşması, push soyutlaması ve cihaz kaydı. Toplam 51 e2e testi.
 - **E8 tamam (API, web; test sağlayıcısıyla):** IBAN hesabı, ödeme talebi ve bağlantısı, split, imzalı webhook, fatura kaydı. Toplam 55 e2e testi.
+- **E9 tamam (API, web):** yönetim özeti, kullanıcı askıya alma, ilan moderasyonu ve şikâyetler, EİDS elle doğrulama, ödeme listesi. Toplam 60 e2e + 32 birim testi.
 - **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
-1. E9 Admin; mobil ekranlar ve testleri en sonda
+1. Mobil: E3–E8 ekranları (portföy, akış, keşfet, arama, talepler, mesajlar, ödemeler), sonra bilgisayarda `flutter analyze/test` ve emülatör
 2. Gerçek SMS sağlayıcısı (Netgsm / İleti Merkezi) ve S3 uyumlu depolama sürücüsü
 3. KVKK aydınlatma ve kullanım koşulları nihai metinleri (şu an yer tutucu)
 4. FCM sağlayıcısı (`PushProvider`) — Firebase projesi açılınca

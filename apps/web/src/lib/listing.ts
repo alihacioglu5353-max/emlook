@@ -72,3 +72,15 @@ export const PAYMENT_STATUS_LABEL: Record<"open" | "paid" | "cancelled" | "expir
   expired: "Süresi doldu",
   refunded: "İade edildi",
 };
+
+export const REPORT_REASON_LABEL: Record<
+  "misleading" | "wrong_price" | "not_available" | "duplicate" | "fraud" | "other",
+  string
+> = {
+  misleading: "Yanıltıcı bilgi / fotoğraf",
+  wrong_price: "Fiyat yanlış",
+  not_available: "Artık satışta / kirada değil",
+  duplicate: "Mükerrer ilan",
+  fraud: "Dolandırıcılık şüphesi",
+  other: "Diğer",
+};

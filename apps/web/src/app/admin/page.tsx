@@ -1,131 +1,95 @@
 "use client";
 
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Alert, Card, Eyebrow, Spinner, StatusBadge } from "@/components/ui";
-import { api, type AdminListItem, type VerificationStatus } from "@/lib/api";
-import { STATUS_LABEL, formatDate, formatPhone } from "@/lib/format";
+import Link from "next/link";
+import { Alert, Eyebrow, Spinner } from "@/components/ui";
+import { api, type AdminDashboard } from "@/lib/api";
+import { formatKurus } from "@/lib/listing";
 
-const TABS: VerificationStatus[] = ["pending", "rejected", "approved", "draft"];
+export default function AdminHome() {
+  const q = useQuery({ queryKey: ["admin-dashboard"], queryFn: () => api<AdminDashboard>("/admin/dashboard") });
+  const d = q.data;
+  if (!d) return q.isError ? <Alert tone="error">{q.error.message}</Alert> : <Spinner />;
 
-interface ListResponse {
-  items: AdminListItem[];
-  total: number;
-}
+  const todo: { label: string; n: number; href: string }[] = [
+    { label: "Bekleyen danışman başvurusu", n: d.pendingVerifications, href: "/admin/basvurular" },
+    { label: "Bekleyen ofis başvurusu", n: d.pendingOffices, href: "/admin/ofisler" },
+    { label: "Açık şikâyet", n: d.openReports, href: "/admin/sikayetler" },
+    { label: "EİDS elle doğrulama", n: d.pendingEids, href: "/admin/ilanlar?eids=pending" },
+  ];
 
-export default function AdminVerifications() {
-  const [status, setStatus] = useState<VerificationStatus>("pending");
-  const counts = useQuery({
-    queryKey: ["admin-counts"],
-    queryFn: () => api<Record<VerificationStatus, number>>("/admin/verifications/counts"),
-  }).data;
-  const listQuery = useQuery({
-    queryKey: ["admin-verifications", status],
-    queryFn: () => api<ListResponse>(`/admin/verifications?status=${status}&limit=50`),
-  });
-  const list = listQuery.data;
-  const error = listQuery.isError ? listQuery.error.message : null;
+  const groups: { title: string; items: [string, string][] }[] = [
+    {
+      title: "Kullanıcılar",
+      items: [
+        ["Danışman", String(d.agents)],
+        ["Onaylı danışman", String(d.verifiedAgents)],
+        ["Mülk sahibi / alıcı", String(d.consumers)],
+        ["Son 7 günde yeni", String(d.newUsers7d)],
+        ["Askıda", String(d.suspended)],
+        ["Aktif ofis", String(d.activeOffices)],
+      ],
+    },
+    {
+      title: "Portföy ve etkileşim",
+      items: [
+        ["Yayındaki ilan", String(d.activeListings)],
+        ["Bunların deneme ilanı", String(d.demoListings)],
+        ["Son 7 günde yayın", String(d.newListings7d)],
+        ["İlgi (el sıkışma)", String(d.interests)],
+        ["Eşleşme", String(d.matches)],
+        ["Son 7 günde mesaj", String(d.messages7d)],
+      ],
+    },
+    {
+      title: "Ödemeler",
+      items: [
+        ["Ödenen talep", String(d.paidPayments)],
+        ["Tahsil edilen hacim", formatKurus(d.paidVolume)],
+        ["Platform geliri", formatKurus(d.platformRevenue)],
+        ["IBAN bekleyen pay", formatKurus(d.heldPayouts)],
+        ["Kesilecek fatura", String(d.pendingInvoices)],
+      ],
+    },
+  ];
 
   return (
-    <div>
-      <Eyebrow>Yönetim</Eyebrow>
-      <h1 className="text-3xl font-extrabold tracking-tight">Danışman başvuruları</h1>
-      <p className="mt-2 text-ink-soft">
-        Yetki belgesini kontrol et, uygun başvuruları onayla. Bekleyenler en eskiden başlar.
-      </p>
-
-      <div className="mt-8 flex flex-wrap gap-2" role="tablist">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={status === t}
-            onClick={() => setStatus(t)}
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-              status === t
-                ? "border-ink bg-ink text-white"
-                : "border-line bg-surface text-ink-soft hover:text-ink"
-            }`}
-          >
-            {STATUS_LABEL[t]}
-            {counts && (
-              <span
-                className={`rounded-full px-2 text-xs ${
-                  status === t ? "bg-white/20" : "bg-paper"
-                } ${t === "pending" && counts.pending > 0 && status !== t ? "text-brand" : ""}`}
-              >
-                {counts[t]}
-              </span>
-            )}
-          </button>
-        ))}
+    <div className="space-y-8">
+      <div>
+        <Eyebrow>Yönetim</Eyebrow>
+        <h1 className="text-3xl font-extrabold tracking-tight">Özet</h1>
       </div>
 
-      <Card className="mt-6 !p-0 overflow-hidden">
-        {error ? (
-          <div className="p-6">
-            <Alert tone="error">{error}</Alert>
-          </div>
-        ) : !list ? (
-          <div className="px-6">
-            <Spinner />
-          </div>
-        ) : list.items.length === 0 ? (
-          <p className="p-10 text-center text-ink-soft">
-            {status === "pending" ? "Bekleyen başvuru yok." : "Bu durumda başvuru yok."}
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="border-b border-line bg-paper text-xs uppercase tracking-wide text-ink-soft">
-                <tr>
-                  <th className="px-6 py-3 font-semibold">Danışman</th>
-                  <th className="px-6 py-3 font-semibold">İşletme / belge no</th>
-                  <th className="px-6 py-3 font-semibold">Bölge</th>
-                  <th className="px-6 py-3 font-semibold">
-                    {status === "pending" ? "Gönderim" : "Son işlem"}
-                  </th>
-                  <th className="px-6 py-3 font-semibold">Durum</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {list.items.map((r) => (
-                  <tr key={r.userId} className="hover:bg-paper/60">
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/admin/basvurular/${r.userId}`}
-                        className="font-semibold hover:text-brand"
-                      >
-                        {r.fullName ?? "—"}
-                      </Link>
-                      <div className="text-xs text-ink-soft">{formatPhone(r.phone)}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div>{r.businessName ?? "—"}</div>
-                      <div className="text-xs text-ink-soft">{r.licenseNumber ?? "—"}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {[r.district, r.city].filter(Boolean).join(", ") || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-ink-soft">
-                      {formatDate(status === "pending" ? r.submittedAt : r.reviewedAt)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={r.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-      {list && list.total > list.items.length && (
-        <p className="mt-3 text-sm text-ink-soft">
-          {list.total} başvurudan ilk {list.items.length} tanesi gösteriliyor.
-        </p>
-      )}
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {todo.map((t) => (
+          <Link
+            key={t.label}
+            href={t.href}
+            className={`rounded-2xl border p-5 transition hover:border-ink-soft/40 ${
+              t.n > 0 ? "border-transparent bg-warn-tint" : "border-line bg-surface"
+            }`}
+          >
+            <p className={`text-3xl font-extrabold tabular-nums ${t.n > 0 ? "text-warn" : ""}`}>{t.n}</p>
+            <p className="mt-1 text-sm font-semibold">{t.label}</p>
+          </Link>
+        ))}
+      </section>
+
+      <div className="grid gap-5 lg:grid-cols-3">
+        {groups.map((g) => (
+          <section key={g.title} className="rounded-2xl border border-line bg-surface p-6">
+            <h2 className="font-bold">{g.title}</h2>
+            <dl className="mt-3 divide-y divide-line text-sm">
+              {g.items.map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-3 py-2">
+                  <dt className="text-ink-soft">{k}</dt>
+                  <dd className="font-semibold tabular-nums">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }
