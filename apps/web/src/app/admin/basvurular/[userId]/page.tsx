@@ -44,7 +44,7 @@ export default function AdminVerificationDetail() {
   const p = data.profile;
   return (
     <div>
-      <Link href="/admin" className="text-sm font-semibold text-ink-soft hover:text-ink">
+      <Link href="/admin/basvurular" className="text-sm font-semibold text-ink-soft hover:text-ink">
         ← Başvurular
       </Link>
       <div className="mt-4 flex flex-wrap items-center gap-3">

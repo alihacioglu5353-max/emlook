@@ -536,3 +536,120 @@ export interface PublicPayment {
   payee: { fullName: string; isVerified: boolean; officeName: string | null };
   provider: string;
 }
+
+// ---- E9 · Yönetim ----
+
+export type AdminDashboard = Record<
+  | "agents"
+  | "consumers"
+  | "suspended"
+  | "newUsers7d"
+  | "verifiedAgents"
+  | "pendingVerifications"
+  | "pendingOffices"
+  | "activeOffices"
+  | "activeListings"
+  | "demoListings"
+  | "newListings7d"
+  | "pendingEids"
+  | "openReports"
+  | "interests"
+  | "matches"
+  | "messages7d"
+  | "paidPayments"
+  | "paidVolume"
+  | "platformRevenue"
+  | "heldPayouts"
+  | "pendingInvoices",
+  number
+>;
+
+export interface AdminUserRow {
+  id: string;
+  fullName: string | null;
+  phone: string;
+  role: Role | null;
+  status: "active" | "suspended";
+  verification: VerificationStatus | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+  activeListings: number;
+  officeName: string | null;
+}
+
+export interface AdminUserDetail {
+  id: string;
+  fullName: string | null;
+  phone: string;
+  email: string | null;
+  role: Role | null;
+  status: "active" | "suspended";
+  suspendedReason: string | null;
+  suspendedAt: string | null;
+  createdAt: string;
+  lastLoginAt: string | null;
+  verification: VerificationStatus | null;
+  licenseNumber: string | null;
+  businessName: string | null;
+  stats: {
+    activeListings: number;
+    allListings: number;
+    followers: number;
+    reportsAgainst: number;
+    paidPayments: number;
+    activeSessions: number;
+  };
+}
+
+export interface AdminListingRow {
+  id: string;
+  title: string;
+  dealType: DealType;
+  price: number;
+  status: ListingStatus;
+  isDemo: boolean;
+  visibility: ListingVisibility;
+  eidsStatus: EidsStatus;
+  propertyNumber: string | null;
+  removedReason: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+  city: string;
+  district: string;
+  owner: { id: string; fullName: string | null; status: "active" | "suspended" };
+  openReports: number;
+  licenseNumber: string | null;
+}
+
+export type ReportReason = "misleading" | "wrong_price" | "not_available" | "duplicate" | "fraud" | "other";
+
+export interface AdminReport {
+  id: string;
+  reason: ReportReason;
+  note: string | null;
+  status: "open" | "resolved" | "dismissed";
+  resolution: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  listing: { id: string; title: string; status: ListingStatus };
+  owner: { id: string; fullName: string | null };
+  reporter: { id: string; fullName: string | null; role: Role | null };
+  sameListingOpen: number;
+}
+
+export interface AdminPaymentRow {
+  id: string;
+  status: PaymentStatus;
+  amount: number;
+  description: string;
+  payerName: string;
+  platformFee: number;
+  buyerShare: number;
+  provider: string;
+  providerPaymentId: string | null;
+  createdAt: string;
+  paidAt: string | null;
+  seller: { id: string; fullName: string | null };
+  buyerAgent: { id: string; fullName: string | null } | null;
+  invoiceStatus: "pending" | "issued" | "failed" | null;
+}

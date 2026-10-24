@@ -23,7 +23,12 @@ export type NotificationType =
   | 'interest.accepted'
   | 'interest.declined'
   | 'payment.request_created'
-  | 'payment.paid';
+  | 'payment.paid'
+  | 'account.reactivated'
+  | 'listing.removed'
+  | 'listing.restored'
+  | 'listing.eids_verified'
+  | 'listing.eids_failed';
 
 export interface NewNotification {
   userId: string;

@@ -9,9 +9,16 @@ import { EidsBadge, ListingStatusBadge, PhotoPlaceholder } from "@/components/li
 import { useStartConversation } from "@/components/chat";
 import { Avatar, FollowButton, Reactions } from "@/components/social";
 import { Alert, Button, Card, Spinner, Textarea, VerifiedIcon } from "@/components/ui";
-import { api, fileUrl, type AgentProfileCard, type InterestItem, type ListingDetail } from "@/lib/api";
+import {
+  api,
+  fileUrl,
+  type AgentProfileCard,
+  type InterestItem,
+  type ListingDetail,
+  type ReportReason,
+} from "@/lib/api";
 import { formatDate } from "@/lib/format";
-import { DEAL_LABEL, formatLocation, formatPrice } from "@/lib/listing";
+import { DEAL_LABEL, formatLocation, formatPrice, REPORT_REASON_LABEL } from "@/lib/listing";
 
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -181,6 +188,7 @@ export default function ListingDetailPage() {
           </dl>
         </Card>
       </div>
+      {!l.isOwner && me.role !== "admin" && l.status === "active" && <ReportBox listingId={l.id} />}
     </div>
   );
 }
@@ -283,5 +291,79 @@ function WriteToOwner({ ownerId, listingId }: { ownerId: string; listingId: stri
       </Button>
       {chat.error && <p className="mt-2 text-sm text-brand">{chat.error}</p>}
     </div>
+  );
+}
+
+const REASONS = Object.entries(REPORT_REASON_LABEL) as [ReportReason, string][];
+
+/** İlanı şikâyet et */
+function ReportBox({ listingId }: { listingId: string }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<ReportReason>("misleading");
+  const [note, setNote] = useState("");
+  const [state, setState] = useState<"idle" | "busy" | "done">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  if (state === "done") {
+    return <p className="text-sm text-ink-soft">Bildirimin alındı, ekibimiz inceleyecek. Teşekkürler.</p>;
+  }
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="text-sm font-semibold text-ink-soft hover:text-brand">
+        Bu ilanı şikâyet et
+      </button>
+    );
+  }
+  return (
+    <Card className="!p-5">
+      <h2 className="font-bold">İlanı şikâyet et</h2>
+      <div className="mt-3 space-y-3">
+        <select
+          aria-label="Şikâyet nedeni"
+          value={reason}
+          onChange={(e) => setReason(e.target.value as ReportReason)}
+          className="h-11 w-full rounded-xl border border-line bg-surface px-3 text-sm focus:border-ink focus:outline-none"
+        >
+          {REASONS.map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </select>
+        <Textarea
+          aria-label="Açıklama"
+          placeholder="İsteğe bağlı açıklama"
+          rows={2}
+          maxLength={500}
+          className="!min-h-0 text-sm"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+        {error && <p className="text-sm text-brand">{error}</p>}
+        <div className="flex gap-2">
+          <Button
+            variant="danger"
+            className="!h-9"
+            loading={state === "busy"}
+            onClick={async () => {
+              setState("busy");
+              setError(null);
+              try {
+                await api(`/listings/${listingId}/report`, { json: { reason, note: note.trim() || undefined } });
+                setState("done");
+              } catch (e) {
+                setError(e instanceof Error ? e.message : String(e));
+                setState("idle");
+              }
+            }}
+          >
+            Gönder
+          </Button>
+          <Button variant="ghost" className="!h-9" onClick={() => setOpen(false)}>
+            Vazgeç
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
 }

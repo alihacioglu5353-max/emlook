@@ -14,7 +14,14 @@ export type AuditAction =
   | 'office.member_transferred'
   | 'payout_account.updated'
   | 'payment_request.created'
-  | 'payment_request.cancelled';
+  | 'payment_request.cancelled'
+  | 'user.suspended'
+  | 'user.reactivated'
+  | 'listing.removed'
+  | 'listing.restored'
+  | 'listing.eids_verified'
+  | 'listing.eids_failed'
+  | 'report.dismissed';
 
 @Injectable()
 export class AuditService {

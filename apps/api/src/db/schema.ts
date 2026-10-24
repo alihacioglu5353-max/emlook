@@ -42,6 +42,9 @@ export const users = pgTable('users', {
   /** Kayıt (onboarding) tamamlanana kadar null kalır. */
   role: userRole('role'),
   status: userStatus('status').notNull().default('active'),
+  /** Askıya alma gerekçesi (yönetici) */
+  suspendedReason: text('suspended_reason'),
+  suspendedAt: timestamp('suspended_at', { withTimezone: true }),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -776,6 +779,45 @@ export const invoices = pgTable(
   (t) => [uniqueIndex('invoices_request_idx').on(t.requestId)],
 );
 
+// ---- E9 · Yönetim ----
+
+export const reportReason = pgEnum('report_reason', [
+  'misleading',
+  'wrong_price',
+  'not_available',
+  'duplicate',
+  'fraud',
+  'other',
+]);
+export const reportStatus = pgEnum('report_status', ['open', 'resolved', 'dismissed']);
+
+/** İlan şikâyeti; kullanıcı + ilan başına tek açık şikâyet */
+export const listingReports = pgTable(
+  'listing_reports',
+  {
+    id: id(),
+    listingId: uuid('listing_id')
+      .notNull()
+      .references(() => listings.id, { onDelete: 'cascade' }),
+    reporterId: uuid('reporter_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    reason: reportReason('reason').notNull(),
+    note: text('note'),
+    status: reportStatus('status').notNull().default('open'),
+    resolvedBy: uuid('resolved_by').references(() => users.id, { onDelete: 'set null' }),
+    resolution: text('resolution'),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('listing_reports_open_idx')
+      .on(t.listingId, t.reporterId)
+      .where(sql`status = 'open'`),
+    index('listing_reports_status_idx').on(t.status, t.createdAt),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type VerificationDocument = typeof verificationDocuments.$inferSelect;
@@ -800,3 +842,4 @@ export type Message = typeof messages.$inferSelect;
 export type DevicePlatform = (typeof devicePlatform.enumValues)[number];
 export type PaymentRequest = typeof paymentRequests.$inferSelect;
 export type PaymentStatus = (typeof paymentStatus.enumValues)[number];
+export type ReportReason = (typeof reportReason.enumValues)[number];
