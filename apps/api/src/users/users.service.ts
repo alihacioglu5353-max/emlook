@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, ne } from 'drizzle-orm';
 import type { ClientInfo } from '../common/auth.decorators.js';
+import { avatarOf } from './avatar.js';
 import { AuditService } from '../common/audit.service.js';
 import type { Env } from '../config/env.js';
 import { InjectDb, type Database } from '../db/db.module.js';
@@ -39,6 +40,11 @@ export class UsersService {
         verificationStatus: agentProfiles.verificationStatus,
         passwordHash: users.passwordHash,
         passwordUpdatedAt: users.passwordUpdatedAt,
+        avatarKey: users.avatarKey,
+        avatarPreset: users.avatarPreset,
+        avatarUpdatedAt: users.avatarUpdatedAt,
+        score: agentProfiles.score,
+        badge: agentProfiles.badge,
       })
       .from(users)
       .leftJoin(agentProfiles, eq(agentProfiles.userId, users.id))
@@ -46,9 +52,10 @@ export class UsersService {
       .limit(1);
     if (!row) throw new NotFoundException('Kullanıcı bulunamadı');
 
-    const { verificationStatus, passwordHash, ...user } = row;
+    const { verificationStatus, passwordHash, avatarKey, avatarPreset, avatarUpdatedAt, score, badge, ...user } = row;
     return {
       ...user,
+      avatar: avatarOf({ id: user.id, avatarKey, avatarPreset, avatarUpdatedAt }),
       /** E-posta + parola ile giriş açık mı */
       hasPassword: passwordHash !== null,
       onboardingRequired: user.role === null,
@@ -57,6 +64,8 @@ export class UsersService {
           ? {
               verificationStatus,
               isVerified: verificationStatus === 'approved',
+              score: score ?? 0,
+              badge: badge ?? null,
             }
           : null,
       /** Aktif ofis üyeliği; danışman değilse veya ofisi yoksa null */

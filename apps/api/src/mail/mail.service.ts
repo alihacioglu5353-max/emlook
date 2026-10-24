@@ -2,6 +2,7 @@ import { Global, Injectable, Logger, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createTransport, type Transporter } from 'nodemailer';
 import type { Env } from '../config/env.js';
+import { SettingsService } from '../settings/settings.service.js';
 
 export interface MailMessage {
   to: string;
@@ -56,20 +57,48 @@ export class SmtpMailService extends MailService {
   }
 }
 
+/** Yönetim > Ayarlar'da SMTP etkinse o kullanılır; değilse ortam değişkenindeki sağlayıcı */
+export class SettingsAwareMailService extends MailService {
+  private cached: { sig: string; svc: SmtpMailService } | null = null;
+  constructor(
+    private readonly fallback: MailService,
+    private readonly settings: SettingsService,
+    private readonly defaultFrom: string,
+  ) {
+    super();
+  }
+  async send(m: MailMessage): Promise<void> {
+    const s = await this.settings.activeIntegration('smtp');
+    if (!s) return this.fallback.send(m);
+    const sig = JSON.stringify(s);
+    if (this.cached?.sig !== sig) {
+      this.cached = {
+        sig,
+        svc: new SmtpMailService(
+          { host: String(s.host), port: Number(s.port) || 587, secure: s.secure === true, user: (s.user as string) || undefined, pass: (s.pass as string) || undefined },
+          (s.from as string) || this.defaultFrom,
+        ),
+      };
+    }
+    return this.cached.svc.send(m);
+  }
+}
+
 @Global()
 @Module({
   providers: [
     {
       provide: MailService,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<Env, true>): MailService => {
+      inject: [ConfigService, SettingsService],
+      useFactory: (config: ConfigService<Env, true>, settings: SettingsService): MailService => {
+        const from = config.get('MAIL_FROM', { infer: true });
         switch (config.get('MAIL_PROVIDER', { infer: true })) {
           case 'memory':
             return new MemoryMailService();
           case 'smtp':
-            return new SmtpMailService(config.get('SMTP', { infer: true })!, config.get('MAIL_FROM', { infer: true }));
+            return new SettingsAwareMailService(new SmtpMailService(config.get('SMTP', { infer: true })!, from), settings, from);
           default:
-            return new ConsoleMailService();
+            return new SettingsAwareMailService(new ConsoleMailService(), settings, from);
         }
       },
     },

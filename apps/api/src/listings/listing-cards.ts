@@ -1,3 +1,4 @@
+import { avatarOf } from '../users/avatar.js';
 import { and, eq, sql, type SQL } from 'drizzle-orm';
 import type { Database } from '../db/db.module.js';
 import {
@@ -79,6 +80,10 @@ export async function listingCards(
       ownerId: users.id,
       ownerName: users.fullName,
       ownerVerification: agentProfiles.verificationStatus,
+      ownerBadge: agentProfiles.badge,
+      ownerAvatarKey: users.avatarKey,
+      ownerAvatarPreset: users.avatarPreset,
+      ownerAvatarUpdatedAt: users.avatarUpdatedAt,
       ownerOffice: sql<string | null>`(
         select o.name from office_memberships m
         join offices o on o.id = m.office_id
@@ -137,6 +142,8 @@ export async function listingCards(
       fullName: r.ownerName,
       isVerified: r.ownerVerification === 'approved',
       officeName: r.ownerOffice,
+      badge: r.ownerVerification === 'approved' ? r.ownerBadge : null,
+      avatar: avatarOf({ id: r.ownerId, avatarKey: r.ownerAvatarKey, avatarPreset: r.ownerAvatarPreset, avatarUpdatedAt: r.ownerAvatarUpdatedAt }),
     },
     coverPhoto: r.coverPhotoId ? photoPath(r.id, r.coverPhotoId) : null,
     photoCount: r.photoCount,

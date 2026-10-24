@@ -121,10 +121,10 @@ export class ChangeRoleDto {
 }
 
 export class ListOfficesQuery {
-  @ApiPropertyOptional({ enum: officeStatus.enumValues, default: 'pending' })
+  @ApiPropertyOptional({ enum: [...officeStatus.enumValues, 'all'], default: 'pending' })
   @IsOptional()
-  @IsIn(officeStatus.enumValues)
-  status?: OfficeStatus;
+  @IsIn([...officeStatus.enumValues, 'all'])
+  status?: OfficeStatus | 'all';
 
   @ApiPropertyOptional({ default: 20 })
   @IsOptional()

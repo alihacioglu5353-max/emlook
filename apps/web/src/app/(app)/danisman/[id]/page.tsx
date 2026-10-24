@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useMe } from "@/components/app-shell";
 import { useStartConversation } from "@/components/chat";
 import { ListingGrid } from "@/components/listing-grid";
+import { BadgeChip } from "@/components/data-ui";
 import { Avatar, FollowButton, PersonRow } from "@/components/social";
 import { Alert, Button, EmptyState, RoleBadge, Spinner, VerifiedIcon } from "@/components/ui";
 import { api, type AgentProfileCard, type Page, type PersonCard } from "@/lib/api";
@@ -44,11 +45,12 @@ export default function AgentProfilePage() {
     <div className="space-y-8">
       <section className="rounded-2xl border border-line bg-surface p-6 sm:p-8">
         <div className="flex flex-wrap items-start gap-5">
-          <Avatar name={a.fullName} size={72} />
+          <Avatar name={a.fullName} size={72} avatar={a.avatar} />
           <div className="min-w-0 flex-1">
             <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
               {a.fullName ?? "Danışman"}
               {a.isVerified && <VerifiedIcon className="h-5 w-5 text-[#2f7de1]" aria-label="Onaylı danışman" />}
+              <BadgeChip badge={a.badge} score={a.score} />
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-2 text-ink-soft">
               {a.office ? (

@@ -120,6 +120,11 @@ export class FcmPushProvider extends PushProvider {
   }
 
   /** OAuth2 erişim belirteci (JWT bearer akışı) */
+  /** Ayarlar ekranındaki "bağlantıyı test et": servis hesabıyla erişim belirteci alınabiliyor mu */
+  async checkCredentials(): Promise<void> {
+    await this.accessToken();
+  }
+
   private async accessToken(): Promise<string> {
     if (this.token && this.token.expiresAt - 60_000 > this.now()) return this.token.value;
     const iat = Math.floor(this.now() / 1000);

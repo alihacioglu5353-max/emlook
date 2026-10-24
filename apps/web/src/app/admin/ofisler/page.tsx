@@ -3,21 +3,23 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
+import { FilterTabs, PAGE_SIZE, Pagination } from "@/components/data-ui";
 import { Alert, Card, Spinner } from "@/components/ui";
 import { api, type AdminOfficeItem, type OfficeStatus } from "@/lib/api";
 import { OFFICE_STATUS_LABEL, formatDate, formatPhone } from "@/lib/format";
 
-const TABS: OfficeStatus[] = ["pending", "active", "rejected"];
+const TABS: [OfficeStatus, string][] = (["pending", "active", "rejected", "suspended"] as OfficeStatus[]).map((t) => [t, OFFICE_STATUS_LABEL[t]]);
 
 export default function AdminOffices() {
-  const [status, setStatus] = useState<OfficeStatus>("pending");
+  const [status, setStatus] = useState<OfficeStatus | "">("");
+  const [offset, setOffset] = useState(0);
   const counts = useQuery({
     queryKey: ["admin-office-counts"],
     queryFn: () => api<Record<OfficeStatus, number>>("/admin/offices/counts"),
   }).data;
   const list = useQuery({
-    queryKey: ["admin-offices", status],
-    queryFn: () => api<{ items: AdminOfficeItem[]; total: number }>(`/admin/offices?status=${status}&limit=50`),
+    queryKey: ["admin-offices", status, offset],
+    queryFn: () => api<{ items: AdminOfficeItem[]; total: number }>(`/admin/offices?status=${status || "all"}&limit=${PAGE_SIZE}&offset=${offset}`),
   });
 
   return (
@@ -26,25 +28,16 @@ export default function AdminOffices() {
         Ofis unvanı ve yetki belgesi numarasının sahibin onaylı danışman bilgileriyle tutarlı olduğunu kontrol et.
       </p>
 
-      <div className="mt-5 flex flex-wrap gap-2" role="tablist">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={status === t}
-            onClick={() => setStatus(t)}
-            className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
-              status === t ? "border-ink bg-ink text-white" : "border-line bg-surface text-ink-soft hover:text-ink"
-            }`}
-          >
-            {OFFICE_STATUS_LABEL[t]}
-            {counts && (
-              <span className={`rounded-full px-2 text-xs ${status === t ? "bg-white/20" : "bg-paper"}`}>
-                {counts[t]}
-              </span>
-            )}
-          </button>
-        ))}
+      <div className="mt-5">
+        <FilterTabs
+          value={status}
+          options={TABS}
+          counts={counts && { "": Object.values(counts).reduce((a, b) => a + b, 0), ...counts }}
+          onChange={(v) => {
+            setStatus(v);
+            setOffset(0);
+          }}
+        />
       </div>
 
       <Card className="mt-6 !p-0 overflow-hidden">
@@ -58,7 +51,7 @@ export default function AdminOffices() {
           </div>
         ) : list.data.items.length === 0 ? (
           <p className="p-10 text-center text-ink-soft">
-            {status === "pending" ? "Bekleyen ofis başvurusu yok." : "Bu durumda ofis yok."}
+            Bu filtrede ofis yok.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -69,7 +62,8 @@ export default function AdminOffices() {
                   <th className="px-6 py-3 font-semibold">Unvan / belge no</th>
                   <th className="px-6 py-3 font-semibold">Sahip</th>
                   <th className="px-6 py-3 font-semibold">Bölge</th>
-                  <th className="px-6 py-3 font-semibold">{status === "pending" ? "Başvuru" : "Son işlem"}</th>
+                  <th className="px-6 py-3 font-semibold">Başvuru</th>
+                  <th className="px-6 py-3 font-semibold">Durum</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -91,8 +85,11 @@ export default function AdminOffices() {
                     <td className="px-6 py-4">
                       {o.district}, {o.city}
                     </td>
-                    <td className="px-6 py-4 text-ink-soft">
-                      {formatDate(status === "pending" ? o.createdAt : o.reviewedAt)}
+                    <td className="px-6 py-4 text-ink-soft">{formatDate(o.createdAt)}</td>
+                    <td className="px-6 py-4">
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${o.status === "active" ? "bg-ok-tint text-ok" : o.status === "pending" ? "bg-warn-tint text-warn" : "bg-brand-tint text-brand"}`}>
+                        {OFFICE_STATUS_LABEL[o.status]}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -101,6 +98,11 @@ export default function AdminOffices() {
           </div>
         )}
       </Card>
+      {list.data && (
+        <div className="mt-3">
+          <Pagination total={list.data.total} offset={offset} onChange={setOffset} />
+        </div>
+      )}
     </div>
   );
 }

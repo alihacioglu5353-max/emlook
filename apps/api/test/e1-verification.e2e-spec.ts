@@ -66,6 +66,8 @@ describe('E1 — kayıt, danışman başvurusu ve admin onayı', () => {
       expect(res.body.agent).toEqual({
         verificationStatus: 'draft',
         isVerified: false,
+        score: 0,
+        badge: null,
       });
       const types = res.body.consents.map((c: { type: string }) => c.type).sort();
       expect(types).toEqual(['kvkk_clarification', 'marketing', 'terms_of_use']);
@@ -285,7 +287,7 @@ describe('E1 — kayıt, danışman başvurusu ve admin onayı', () => {
         .get('/api/v1/me')
         .set(bearer(agent.accessToken))
         .expect(200);
-      expect(me.body.agent).toEqual({ verificationStatus: 'approved', isVerified: true });
+      expect(me.body.agent).toEqual({ verificationStatus: 'approved', isVerified: true, score: 0, badge: null });
 
       const card = await ctx
         .http()

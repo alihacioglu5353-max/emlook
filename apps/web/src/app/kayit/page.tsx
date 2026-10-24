@@ -48,7 +48,7 @@ export default function OnboardingPage() {
           marketing,
         },
       });
-      router.replace(me.role === "agent" ? "/panel/basvuru" : "/panel");
+      router.replace(me.role === "agent" ? "/basvuru" : "/panel");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setBusy(false);

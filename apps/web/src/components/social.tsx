@@ -1,5 +1,8 @@
 "use client";
 
+import { Avatar as DataAvatar } from "./data-ui";
+import type { AvatarData } from "@/lib/api";
+
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
@@ -175,20 +178,7 @@ export function PersonRow({ person, canFollow }: { person: PersonCard; canFollow
   );
 }
 
-export function Avatar({ name, size = 40 }: { name: string | null; size?: number }) {
-  const initials = (name ?? "?")
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]!.toLocaleUpperCase("tr"))
-    .join("");
-  return (
-    <span
-      aria-hidden
-      style={{ width: size, height: size, fontSize: size * 0.36 }}
-      className="inline-flex shrink-0 items-center justify-center rounded-full bg-brand-tint font-bold text-brand-ink"
-    >
-      {initials}
-    </span>
-  );
+/** Profil resmi / hazır avatar / baş harfler */
+export function Avatar({ name, size = 40, avatar }: { name: string | null; size?: number; avatar?: AvatarData }) {
+  return <DataAvatar avatar={avatar} name={name} size={size} />;
 }

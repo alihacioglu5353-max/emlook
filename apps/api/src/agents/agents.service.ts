@@ -11,20 +11,31 @@ import { InjectDb, type Database } from '../db/db.module.js';
 import { activeOfficeOf } from '../db/queries.js';
 import {
   agentProfiles,
+  documentTypes,
   users,
   verificationDocuments,
   type AgentProfile,
   type DocumentType,
 } from '../db/schema.js';
 import { StorageService } from '../storage/storage.service.js';
+import { avatarOf } from '../users/avatar.js';
 import type { UpdateAgentProfileDto } from './dto.js';
 
-const MAX_DOCUMENTS = 10;
+const MAX_DOCUMENTS = 15;
 
-/** Dosya türü uzantıya değil içeriğin ilk baytlarına göre belirlenir. */
-function sniff(buffer: Buffer): { mime: string; ext: string } | null {
+/**
+ * Dosya türü uzantıya değil içeriğin ilk baytlarına göre belirlenir.
+ * Belgeler: PDF ve resim (JPG, PNG, BMP, WEBP). Profil resmi: yalnızca resimler.
+ */
+export function sniff(buffer: Buffer): { mime: string; ext: string } | null {
   if (buffer.subarray(0, 4).toString('latin1') === '%PDF') {
     return { mime: 'application/pdf', ext: 'pdf' };
+  }
+  if (buffer[0] === 0x42 && buffer[1] === 0x4d && buffer.length > 26) {
+    return { mime: 'image/bmp', ext: 'bmp' };
+  }
+  if (buffer.subarray(0, 4).toString('latin1') === 'RIFF' && buffer.subarray(8, 12).toString('latin1') === 'WEBP') {
+    return { mime: 'image/webp', ext: 'webp' };
   }
   if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
     return { mime: 'image/jpeg', ext: 'jpg' };
@@ -78,7 +89,8 @@ export class AgentsService {
       reviewedAt: profile.reviewedAt,
       rejectionReason: profile.rejectionReason,
       documents,
-      missing: this.missing(profile, documents.map((d) => d.type)),
+      documentTypes: await this.documentTypes(),
+      missing: await this.missing(profile, documents.map((d) => d.type)),
     };
   }
 
@@ -117,12 +129,19 @@ export class AgentsService {
     if (!kind) {
       throw new BadRequestException({
         code: 'FILE_TYPE',
-        message: 'Yalnızca PDF, JPG veya PNG yükleyebilirsiniz',
+        message: 'Yalnızca PDF veya resim (JPG, PNG, BMP, WEBP) yükleyebilirsiniz',
       });
     }
 
     const profile = await this.profileOrThrow(userId);
     this.assertEditable(profile);
+    const [docType] = await this.db
+      .select({ key: documentTypes.key })
+      .from(documentTypes)
+      .where(and(eq(documentTypes.key, type), eq(documentTypes.active, true)));
+    if (!docType) {
+      throw new BadRequestException({ code: 'DOCUMENT_TYPE_INVALID', message: 'Geçersiz belge türü' });
+    }
 
     const [{ value: existing }] = await this.db
       .select({ value: count() })
@@ -223,6 +242,11 @@ export class AgentsService {
         district: agentProfiles.district,
         bio: agentProfiles.bio,
         verificationStatus: agentProfiles.verificationStatus,
+        score: agentProfiles.score,
+        badge: agentProfiles.badge,
+        avatarKey: users.avatarKey,
+        avatarPreset: users.avatarPreset,
+        avatarUpdatedAt: users.avatarUpdatedAt,
         followerCount: sql<number>`(select count(*)::int from follows f where f.followee_id = "users"."id")`,
         followingCount: sql<number>`(select count(*)::int from follows f where f.follower_id = "users"."id")`,
         activeListingCount: sql<number>`(
@@ -237,13 +261,16 @@ export class AgentsService {
       .where(and(eq(users.id, agentId), eq(users.status, 'active')))
       .limit(1);
     if (!row) throw new NotFoundException('Danışman bulunamadı');
-    const { verificationStatus, ...card } = row;
+    const { verificationStatus, avatarKey, avatarPreset, avatarUpdatedAt, score, badge, ...card } = row;
     const office = await activeOfficeOf(this.db, agentId);
     // Yalnızca onaylı ofis gösterilir; yoksa "Bağımsız Danışman"
     const visible = office?.status === 'active' ? office : null;
     return {
       ...card,
       isVerified: verificationStatus === 'approved',
+      avatar: avatarOf({ id: row.id, avatarKey, avatarPreset, avatarUpdatedAt }),
+      badge: verificationStatus === 'approved' ? badge : null,
+      score: verificationStatus === 'approved' ? score : 0,
       office: visible && { id: visible.id, name: visible.name, role: visible.role },
       independent: !visible,
     };
@@ -270,14 +297,23 @@ export class AgentsService {
     });
   }
 
-  private missing(profile: AgentProfile, docTypes: DocumentType[]): string[] {
+  /** Yöneticinin belirlediği etkin evrak türleri */
+  async documentTypes() {
+    return this.db
+      .select({ key: documentTypes.key, label: documentTypes.label, description: documentTypes.description, required: documentTypes.required })
+      .from(documentTypes)
+      .where(eq(documentTypes.active, true))
+      .orderBy(asc(documentTypes.sortOrder), asc(documentTypes.label));
+  }
+
+  private async missing(profile: AgentProfile, docTypes: DocumentType[]): Promise<string[]> {
     const missing: string[] = [];
     if (!profile.licenseNumber) missing.push('licenseNumber');
     if (!profile.businessName) missing.push('businessName');
     if (!profile.city) missing.push('city');
     if (!profile.district) missing.push('district');
-    if (!docTypes.includes('authority_certificate')) {
-      missing.push('document:authority_certificate');
+    for (const t of await this.documentTypes()) {
+      if (t.required && !docTypes.includes(t.key)) missing.push(`document:${t.key}`);
     }
     return missing;
   }

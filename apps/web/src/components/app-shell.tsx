@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, type ReactNode } fro
 import { api, type Me, type Role } from "@/lib/api";
 import { useUnreadMessages } from "./chat";
 import { AdminFrame } from "./admin-frame";
+import { Avatar as DataAvatar } from "./data-ui";
 import { NotificationBell } from "./notification-bell";
 import { Alert, Logo, Spinner, VerifiedIcon } from "./ui";
 
@@ -77,7 +78,7 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
             { href: "/panel/portfoy", label: "Portföyüm" },
             { href: "/panel/odemeler", label: "Ödemeler" },
             // Onaylandıktan sonra başvuru sayfasına panelden ulaşılır
-            ...(me.agent?.isVerified ? [] : [{ href: "/panel/basvuru", label: "Onay başvurusu" }]),
+            ...(me.agent?.isVerified ? [] : [{ href: "/basvuru", label: "Onay başvurusu" }]),
             { href: "/panel", label: "Panel" },
           ]
         : [
@@ -132,6 +133,7 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
             {ready && <NotificationBell role={me.role} />}
             {me && (
               <span className="hidden items-center gap-1.5 whitespace-nowrap text-sm font-semibold sm:inline-flex">
+                <DataAvatar avatar={me.avatar} name={me.fullName} size={28} />
                 {me.fullName}
                 {me.agent?.isVerified && (
                   <VerifiedIcon className="h-4 w-4 text-[#2f7de1]" aria-label="Onaylı danışman" />

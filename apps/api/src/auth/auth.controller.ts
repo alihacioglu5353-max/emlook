@@ -102,7 +102,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(204)
   @ApiOperation({ summary: 'Geçerli oturumu kapatır' })
-  async logout(@CurrentUser() user: AuthUser) {
-    await this.auth.logout(user.sessionId);
+  async logout(@CurrentUser() user: AuthUser, @Client() client: ClientInfo) {
+    await this.auth.logout(user.sessionId, client);
   }
 }

@@ -24,6 +24,9 @@ import {
   type ListingStatus,
 } from '../db/schema.js';
 import { EidsProvider } from '../eids/eids.service.js';
+import { SettingsService } from '../settings/settings.service.js';
+import { avatarOf } from '../users/avatar.js';
+import { AuditService } from '../common/audit.service.js';
 import { StorageService } from '../storage/storage.service.js';
 import type { CreateListingDto, MyListingsQuery, UpdateListingDto } from './dto.js';
 import { listingCards, photoPath, visibleTo, type Viewer } from './listing-cards.js';
@@ -64,6 +67,8 @@ export class ListingsService {
     private readonly storage: StorageService,
     private readonly eids: EidsProvider,
     private readonly config: ConfigService<Env, true>,
+    private readonly settings: SettingsService,
+    private readonly audit: AuditService,
   ) {}
 
   // ---- Oluşturma ve düzenleme ----
@@ -98,6 +103,7 @@ export class ListingsService {
         searchText: this.searchText(dto, loc),
       })
       .returning({ id: listings.id });
+    await this.audit.log({ actorId: userId, action: 'listing.created', targetType: 'listing', targetId: row.id, metadata: { title: dto.title.trim() } });
     return this.detail(row.id, { id: userId, role: 'agent' });
   }
 
@@ -183,6 +189,7 @@ export class ListingsService {
       .where(eq(listingPhotos.listingId, id));
     await this.db.delete(listings).where(eq(listings.id, id));
     await Promise.all(photos.map((p) => this.storage.remove(p.key)));
+    await this.audit.log({ actorId: userId, action: 'listing.deleted', targetType: 'listing', targetId: id, metadata: { title: current.title } });
   }
 
   // ---- Fotoğraflar ----
@@ -199,7 +206,7 @@ export class ListingsService {
     if (!kind) {
       throw new BadRequestException({ code: 'FILE_TYPE', message: 'Yalnızca JPG, PNG veya WebP yükleyebilirsiniz' });
     }
-    const max = this.config.get('MAX_LISTING_PHOTOS', { infer: true });
+    const max = (await this.settings.general()).maxListingPhotos;
     const [{ n }] = await this.db
       .select({ n: count() })
       .from(listingPhotos)
@@ -325,6 +332,7 @@ export class ListingsService {
       .update(listings)
       .set({ status: 'active', publishedAt: current.publishedAt ?? new Date() })
       .where(eq(listings.id, id));
+    await this.audit.log({ actorId: userId, action: 'listing.published', targetType: 'listing', targetId: id, metadata: { title: current.title } });
     return this.detail(id, { id: userId, role: 'agent' });
   }
 
@@ -335,6 +343,7 @@ export class ListingsService {
       throw new ConflictException({ code: 'INVALID_STATUS', message: 'Bu ilanın durumu değiştirilemez' });
     }
     await this.db.update(listings).set({ status }).where(eq(listings.id, id));
+    await this.audit.log({ actorId: userId, action: 'listing.status_changed', targetType: 'listing', targetId: id, metadata: { title: current.title, status } });
     return this.detail(id, { id: userId, role: 'agent' });
   }
 
@@ -377,7 +386,15 @@ export class ListingsService {
       .where(eq(listingPhotos.listingId, id))
       .orderBy(asc(listingPhotos.position));
     const [owner] = await this.db
-      .select({ id: users.id, fullName: users.fullName, verification: agentProfiles.verificationStatus })
+      .select({
+        id: users.id,
+        fullName: users.fullName,
+        verification: agentProfiles.verificationStatus,
+        badge: agentProfiles.badge,
+        avatarKey: users.avatarKey,
+        avatarPreset: users.avatarPreset,
+        avatarUpdatedAt: users.avatarUpdatedAt,
+      })
       .from(users)
       .leftJoin(agentProfiles, eq(agentProfiles.userId, users.id))
       .where(eq(users.id, listing.ownerId));
@@ -429,6 +446,8 @@ export class ListingsService {
         fullName: owner.fullName,
         isVerified: owner.verification === 'approved',
         office: office?.status === 'active' ? { id: office.id, name: office.name } : null,
+        badge: owner.verification === 'approved' ? owner.badge : null,
+        avatar: avatarOf(owner),
       },
       likeCount: card?.likeCount ?? 0,
       likedByMe: card?.likedByMe ?? false,

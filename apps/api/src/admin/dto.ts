@@ -7,10 +7,10 @@ import {
 } from '../db/schema.js';
 
 export class ListVerificationsQuery {
-  @ApiPropertyOptional({ enum: verificationStatus.enumValues, default: 'pending' })
+  @ApiPropertyOptional({ enum: [...verificationStatus.enumValues, 'all'], default: 'pending' })
   @IsOptional()
-  @IsIn(verificationStatus.enumValues)
-  status?: VerificationStatus;
+  @IsIn([...verificationStatus.enumValues, 'all'])
+  status?: VerificationStatus | 'all';
 
   @ApiPropertyOptional({ default: 20 })
   @IsOptional()

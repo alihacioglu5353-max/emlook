@@ -601,8 +601,8 @@ export class OfficesService {
   // Yönetici (admin) incelemesi
   // -------------------------------------------------------------------------
 
-  async adminList(status: OfficeStatus, limit: number, offset: number) {
-    const where = eq(offices.status, status);
+  async adminList(status: OfficeStatus | 'all', limit: number, offset: number) {
+    const where = status === 'all' ? undefined : eq(offices.status, status);
     const items = await this.db
       .select({
         id: offices.id,

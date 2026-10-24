@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { BarChart, Donut, LineChart, Panel, Pill, Progress, Segmented, StatCard } from "@/components/dashboard";
+import { BadgeChip } from "@/components/data-ui";
 import { Alert, Spinner } from "@/components/ui";
 import { api, fileUrl, type AdminCharts, type AdminDashboard } from "@/lib/api";
 import { timeAgo } from "@/lib/format";
@@ -304,12 +305,13 @@ export default function AdminHome() {
           </div>
         </Panel>
 
-        <Panel title="En aktif danışmanlar" subtitle="Yayındaki ilan, beğeni ve eşleşme" padding={false}>
+        <Panel title="En yüksek puanlı danışmanlar" subtitle="Rozet puanı, yayındaki ilan, beğeni ve eşleşme" padding={false}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-y border-line bg-paper text-left text-[10.5px] font-bold uppercase tracking-[0.1em] text-ink-soft">
                   <th className="px-6 py-2.5">Danışman</th>
+                  <th className="px-3 py-2.5">Rozet</th>
                   <th className="px-3 py-2.5">Ofis</th>
                   <th className="px-3 py-2.5 text-right">İlan</th>
                   <th className="px-3 py-2.5 text-right">Beğeni</th>
@@ -327,6 +329,7 @@ export default function AdminHome() {
                         {a.fullName}
                       </Link>
                     </td>
+                    <td className="px-3 py-3"><BadgeChip badge={a.badge} score={a.score} size="xs" /> <span className="ml-1 text-xs text-ink-soft tabular-nums">{a.score} p</span></td>
                     <td className="px-3 py-3 text-ink-soft">{a.office ?? "Bağımsız"}</td>
                     <td className="px-3 py-3 text-right font-semibold tabular-nums">{a.listings}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{a.likes}</td>

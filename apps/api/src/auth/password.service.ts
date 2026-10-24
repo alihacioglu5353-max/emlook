@@ -73,9 +73,18 @@ export class PasswordService {
           .set({ failedLogins: lock ? 0 : failed, lockedUntil: lock ? new Date(Date.now() + LOCK_MINUTES * 60_000) : null })
           .where(eq(users.id, user.id));
         if (lock) {
-          await this.audit.log({ actorId: user.id, action: 'auth.locked', targetType: 'user', targetId: user.id, metadata: { ip: client.ip } });
+          await this.audit.log({ actorId: user.id, action: 'auth.locked', targetType: 'user', targetId: user.id, ip: client.ip, userAgent: client.userAgent });
         }
       }
+      await this.audit.log({
+        actorId: user?.id ?? null,
+        action: 'auth.login_failed',
+        targetType: 'user',
+        targetId: user?.id,
+        metadata: { method: 'password', email: maskEmail(email) },
+        ip: client.ip,
+        userAgent: client.userAgent,
+      });
       throw invalid();
     }
     if (user.status === 'suspended') throw new ForbiddenException('Hesabınız askıya alınmış');
@@ -85,6 +94,7 @@ export class PasswordService {
       .set({ failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() })
       .where(eq(users.id, user.id));
     const tokens = await this.auth.issueSession(user.id, client);
+    await this.audit.log({ actorId: user.id, action: 'auth.login', targetType: 'user', targetId: user.id, metadata: { method: 'password' }, ip: client.ip, userAgent: client.userAgent });
     return {
       ...tokens,
       user: { id: user.id, phone: user.phone, role: user.role },
@@ -135,7 +145,7 @@ export class PasswordService {
       // Kullanıcıya yine aynı yanıt; hata sunucu loguna düşer
       this.logger.error(`Sıfırlama e-postası gönderilemedi: ${(e as Error).message}`);
     }
-    await this.audit.log({ actorId: user.id, action: 'password.reset_requested', targetType: 'user', targetId: user.id, metadata: { ip: client.ip } });
+    await this.audit.log({ actorId: user.id, action: 'password.reset_requested', targetType: 'user', targetId: user.id, ip: client.ip, userAgent: client.userAgent });
     return done;
   }
 

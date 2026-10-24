@@ -14,7 +14,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { api, fileUrl, type AdminDetail, type VerificationDoc } from "@/lib/api";
-import { DOC_LABEL, formatBytes, formatDate, formatPhone } from "@/lib/format";
+import { docLabel, formatBytes, formatDate, formatPhone } from "@/lib/format";
 
 export default function AdminVerificationDetail() {
   const { userId } = useParams<{ userId: string }>();
@@ -101,7 +101,7 @@ export default function AdminVerificationDetail() {
                     : "border-line text-ink-soft hover:text-ink"
                 }`}
               >
-                {DOC_LABEL[d.type]} · {formatBytes(d.sizeBytes)}
+                {docLabel(d.type, data.documentTypes)} · {formatBytes(d.sizeBytes)}
               </button>
             ))}
           </div>

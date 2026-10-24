@@ -52,6 +52,12 @@ export const users = pgTable('users', {
   /** Art arda hatalı parola denemesi; eşik aşılınca hesap kısa süre kilitlenir */
   failedLogins: integer('failed_logins').notNull().default(0),
   lockedUntil: timestamp('locked_until', { withTimezone: true }),
+  /** Profil fotoğrafı (depolama anahtarı) veya hazır avatar kimliği; ikisi aynı anda dolu olmaz */
+  avatarKey: text('avatar_key'),
+  avatarPreset: text('avatar_preset'),
+  avatarUpdatedAt: timestamp('avatar_updated_at', { withTimezone: true }),
+  /** Son görülme: kimliği doğrulanmış her istekte (en çok dakikada bir) güncellenir */
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 });
@@ -102,17 +108,15 @@ export const agentProfiles = pgTable(
       onDelete: 'set null',
     }),
     rejectionReason: text('rejection_reason'),
+    /** Rozet puanı ve rozet anahtarı (ayarlardaki ölçütlerle periyodik hesaplanır) */
+    score: integer('score').notNull().default(0),
+    badge: text('badge'),
+    scoredAt: timestamp('scored_at', { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [index('agent_profiles_status_idx').on(t.verificationStatus)],
 );
-
-export const documentType = pgEnum('document_type', [
-  'authority_certificate',
-  'identity',
-  'other',
-]);
 
 export const verificationDocuments = pgTable(
   'verification_documents',
@@ -121,7 +125,8 @@ export const verificationDocuments = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    type: documentType('type').notNull(),
+    /** document_types.key (yöneticinin tanımladığı evrak türü) */
+    type: text('type').notNull(),
     storageKey: text('storage_key').notNull(),
     originalName: text('original_name').notNull(),
     mimeType: text('mime_type').notNull(),
@@ -210,10 +215,36 @@ export const auditLogs = pgTable(
     targetType: text('target_type').notNull(),
     targetId: text('target_id'),
     metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
     createdAt: createdAt(),
   },
-  (t) => [index('audit_logs_target_idx').on(t.targetType, t.targetId)],
+  (t) => [
+    index('audit_logs_target_idx').on(t.targetType, t.targetId),
+    index('audit_logs_created_idx').on(t.createdAt),
+    index('audit_logs_actor_idx').on(t.actorId, t.createdAt),
+  ],
 );
+
+/** Yönetici ayarları: genel, rozet ölçütleri, entegrasyonlar (gizli alanlar şifreli) */
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').$type<Record<string, unknown>>().notNull(),
+  updatedBy: uuid('updated_by').references(() => users.id, { onDelete: 'set null' }),
+  updatedAt: updatedAt(),
+});
+
+/** Danışman onayı için istenen evrak türleri (yönetici belirler) */
+export const documentTypes = pgTable('document_types', {
+  id: id(),
+  key: text('key').notNull().unique(),
+  label: text('label').notNull(),
+  description: text('description'),
+  required: boolean('required').notNull().default(false),
+  active: boolean('active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  createdAt: createdAt(),
+});
 
 // ---------------------------------------------------------------------------
 // E2 · Ofis hesabı
@@ -846,7 +877,8 @@ export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type VerificationDocument = typeof verificationDocuments.$inferSelect;
 export type UserRole = (typeof userRole.enumValues)[number];
 export type VerificationStatus = (typeof verificationStatus.enumValues)[number];
-export type DocumentType = (typeof documentType.enumValues)[number];
+/** document_types.key */
+export type DocumentType = string;
 export type ConsentType = (typeof consentType.enumValues)[number];
 export type Office = typeof offices.$inferSelect;
 export type OfficeStatus = (typeof officeStatus.enumValues)[number];

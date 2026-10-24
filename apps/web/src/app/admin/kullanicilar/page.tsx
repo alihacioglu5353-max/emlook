@@ -4,13 +4,13 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
-import { Pager } from "@/components/admin";
+import { Avatar, BadgeChip, FilterSelect, PAGE_SIZE, Pagination } from "@/components/data-ui";
 import { Alert, Button, EmptyState, Spinner, StatusBadge } from "@/components/ui";
 import { api, type AdminUserRow, type Role } from "@/lib/api";
 import { formatPhone, timeAgo } from "@/lib/format";
 
 const ROLE: Record<Role, string> = { agent: "Danışman", consumer: "Mülk sahibi", admin: "Yönetici" };
-const PAGE = 30;
+const PAGE = PAGE_SIZE;
 
 export default function AdminUsers() {
   return (
@@ -46,32 +46,31 @@ function Users({ initial }: { initial: string }) {
     setOffset(0);
     setQ(text.trim());
   }
-  const select =
-    "h-11 rounded-full border border-line bg-surface px-4 text-sm font-semibold focus:border-ink focus:outline-none";
 
   return (
     <div className="space-y-6">
-      <form onSubmit={submit} className="flex flex-wrap gap-2">
+      <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
         <input
           type="search"
           aria-label="Ad veya telefon"
           placeholder="Ad veya telefon"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="h-11 min-w-0 flex-1 rounded-full border border-line bg-surface px-5 text-sm focus:border-ink focus:outline-none"
+          className="h-10 min-w-[220px] flex-1 rounded-lg border border-line bg-surface px-4 text-sm focus:border-ink focus:outline-none"
         />
-        <select aria-label="Rol" className={select} value={role} onChange={(e) => { setRole(e.target.value as Role | ""); setOffset(0); }}>
-          <option value="">Tüm roller</option>
-          <option value="agent">Danışman</option>
-          <option value="consumer">Mülk sahibi</option>
-          <option value="admin">Yönetici</option>
-        </select>
-        <select aria-label="Durum" className={select} value={status} onChange={(e) => { setStatus(e.target.value as "" | "active" | "suspended"); setOffset(0); }}>
-          <option value="">Tüm durumlar</option>
-          <option value="active">Etkin</option>
-          <option value="suspended">Askıda</option>
-        </select>
-        <Button type="submit" variant="secondary">
+        <FilterSelect<Role>
+          label="Rol"
+          value={role}
+          options={[["agent", "Danışman"], ["consumer", "Mülk sahibi"], ["admin", "Yönetici"]]}
+          onChange={(v) => { setRole(v); setOffset(0); }}
+        />
+        <FilterSelect<"active" | "suspended">
+          label="Durum"
+          value={status}
+          options={[["active", "Etkin"], ["suspended", "Askıda"]]}
+          onChange={(v) => { setStatus(v); setOffset(0); }}
+        />
+        <Button type="submit" variant="secondary" className="!h-10">
           Ara
         </Button>
       </form>
@@ -92,7 +91,8 @@ function Users({ initial }: { initial: string }) {
                   <th className="px-4 py-3">Rol</th>
                   <th className="px-4 py-3">Ofis</th>
                   <th className="px-4 py-3 text-right">Yayında</th>
-                  <th className="px-4 py-3">Son giriş</th>
+                  <th className="px-4 py-3">Rozet</th>
+                  <th className="px-4 py-3">Son görülme</th>
                   <th className="px-4 py-3">Durum</th>
                 </tr>
               </thead>
@@ -100,10 +100,15 @@ function Users({ initial }: { initial: string }) {
                 {list.data.items.map((u) => (
                   <tr key={u.id} className="hover:bg-paper/60">
                     <td className="px-4 py-3">
-                      <Link href={`/admin/kullanicilar/${u.id}`} className="font-semibold hover:underline">
-                        {u.fullName ?? "—"}
-                      </Link>
-                      <p className="text-xs text-ink-soft">{formatPhone(u.phone)}</p>
+                      <div className="flex items-center gap-3">
+                        <Avatar avatar={u.avatar} name={u.fullName} size={32} />
+                        <div>
+                          <Link href={`/admin/kullanicilar/${u.id}`} className="font-semibold hover:underline">
+                            {u.fullName ?? "—"}
+                          </Link>
+                          <p className="text-xs text-ink-soft">{formatPhone(u.phone)}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       {u.role ? ROLE[u.role] : "Kayıt yarım"}
@@ -115,7 +120,15 @@ function Users({ initial }: { initial: string }) {
                     </td>
                     <td className="px-4 py-3 text-ink-soft">{u.officeName ?? "—"}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{u.activeListings}</td>
-                    <td className="px-4 py-3 text-ink-soft">{u.lastLoginAt ? timeAgo(u.lastLoginAt) : "—"}</td>
+                    <td className="px-4 py-3">{u.badge ? <BadgeChip badge={u.badge} score={u.score ?? undefined} size="xs" /> : <span className="text-ink-soft">—</span>}</td>
+                    <td className="px-4 py-3 text-ink-soft">
+                      {u.lastSeenAt ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          {u.online && <span className="h-2 w-2 rounded-full bg-ok" title="Çevrimiçi" />}
+                          {timeAgo(u.lastSeenAt)}
+                        </span>
+                      ) : "—"}
+                    </td>
                     <td className="px-4 py-3">
                       {u.status === "suspended" ? (
                         <span className="rounded-full bg-brand-tint px-2.5 py-0.5 text-[11px] font-bold text-brand-ink">Askıda</span>
@@ -128,7 +141,7 @@ function Users({ initial }: { initial: string }) {
               </tbody>
             </table>
           </div>
-          <Pager total={list.data.total} offset={offset} page={PAGE} onChange={setOffset} />
+          <Pagination total={list.data.total} offset={offset} pageSize={PAGE} onChange={setOffset} />
         </>
       )}
     </div>

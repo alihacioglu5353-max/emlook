@@ -64,6 +64,13 @@
       "when": 1792878330413,
       "tag": "0008_auth_password",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792879253402,
+      "tag": "0009_settings_docs_logs",
+      "breakpoints": true
     }
   ]
 }
