@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, type ReactNode } from "react";
 import { api, type Me, type Role } from "@/lib/api";
+import { NotificationBell } from "./notification-bell";
 import { Alert, Logo, Spinner, VerifiedIcon } from "./ui";
 
 export const ME_KEY = ["me"] as const;
@@ -54,13 +55,33 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
 
   const nav =
     me?.role === "admin"
-      ? [{ href: "/admin", label: "Danışman başvuruları" }]
+      ? [
+          { href: "/admin", label: "Danışman başvuruları" },
+          { href: "/admin/ofisler", label: "Ofis başvuruları" },
+        ]
       : me?.role === "agent"
         ? [
             { href: "/panel", label: "Genel bakış" },
             { href: "/panel/basvuru", label: "Onay başvurusu" },
+            { href: "/panel/ofis", label: "Ofisim" },
           ]
         : [{ href: "/panel", label: "Genel bakış" }];
+
+  // En uzun eşleşen menü öğesi etkin sayılır (/admin ile /admin/ofisler)
+  const activeHref = nav
+    .filter((x) => pathname === x.href || pathname.startsWith(x.href + "/"))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  const navLinks = nav.map((n) => (
+    <Link
+      key={n.href}
+      href={n.href}
+      className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-semibold transition ${
+        n.href === activeHref ? "bg-ink text-white" : "text-ink-soft hover:text-ink"
+      }`}
+    >
+      {n.label}
+    </Link>
+  ));
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -69,24 +90,9 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
           <Link href={me?.role === "admin" ? "/admin" : "/panel"} aria-label="Ana sayfa">
             <Logo />
           </Link>
-          <nav className="hidden gap-1 sm:flex">
-            {nav.map((n) => {
-              const active =
-                n.href === pathname || (n.href !== "/panel" && pathname.startsWith(n.href));
-              return (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className={`rounded-full px-3.5 py-2 text-sm font-semibold transition ${
-                    active ? "bg-ink text-white" : "text-ink-soft hover:text-ink"
-                  }`}
-                >
-                  {n.label}
-                </Link>
-              );
-            })}
-          </nav>
-          <div className="ml-auto flex items-center gap-4">
+          <nav className="hidden gap-1 sm:flex">{navLinks}</nav>
+          <div className="ml-auto flex items-center gap-3">
+            {ready && <NotificationBell role={me.role} />}
             {me && (
               <span className="hidden items-center gap-1.5 text-sm font-semibold sm:inline-flex">
                 {me.fullName}
@@ -108,6 +114,11 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
             </button>
           </div>
         </div>
+        {nav.length > 1 && (
+          <nav className="flex gap-1 overflow-x-auto border-t border-line px-3 py-2 sm:hidden">
+            {navLinks}
+          </nav>
+        )}
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 sm:py-10">
         {ready ? (
