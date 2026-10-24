@@ -6,7 +6,8 @@ import { AppModule } from './app.module.js';
 import { configureApp } from './app.setup.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // rawBody: ödeme sağlayıcısı bildirim imzası ham gövde üzerinden doğrulanır
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   // Ters vekil (load balancer) arkasında gerçek istemci IP'si için
   app.set('trust proxy', 1);
   app.enableShutdownHooks();

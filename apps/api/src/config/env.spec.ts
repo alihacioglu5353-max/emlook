@@ -29,17 +29,20 @@ describe('validateEnv', () => {
     expect(env.CORS_ORIGINS).toEqual(['http://a.test', 'http://b.test']);
   });
 
-  it('üretimde kısa sırları ve bellek SMS sağlayıcısını reddeder', () => {
-    const prod = { ...base, NODE_ENV: 'production' };
-    expect(() => validateEnv(prod)).toThrow('en az 32');
+  it('üretimde kısa sırları, test sağlayıcılarını ve eksik webhook sırrını reddeder', () => {
     const long = 'a'.repeat(40);
-    expect(() =>
-      validateEnv({
-        ...prod,
-        JWT_ACCESS_SECRET: long,
-        OTP_SECRET: long,
-        SMS_PROVIDER: 'memory',
-      }),
-    ).toThrow('memory');
+    const prod = {
+      ...base,
+      NODE_ENV: 'production',
+      PAYMENT_WEBHOOK_SECRET: long,
+      EIDS_PROVIDER: 'manual',
+      ALLOW_MOCK_PAYMENTS: 'true',
+    };
+    expect(() => validateEnv(prod)).toThrow('en az 32');
+    const strong = { ...prod, JWT_ACCESS_SECRET: long, OTP_SECRET: long };
+    expect(() => validateEnv({ ...strong, SMS_PROVIDER: 'memory' })).toThrow('memory');
+    expect(() => validateEnv({ ...strong, PAYMENT_WEBHOOK_SECRET: '' })).toThrow('PAYMENT_WEBHOOK_SECRET');
+    expect(() => validateEnv({ ...strong, ALLOW_MOCK_PAYMENTS: undefined })).toThrow('PAYMENT_PROVIDER=mock');
+    expect(validateEnv(strong).PLATFORM_FEE_BPS).toBe(500);
   });
 });

@@ -640,6 +640,142 @@ export const devices = pgTable(
   (t) => [index('devices_user_idx').on(t.userId)],
 );
 
+// ---- E8 · Ödeme ----
+
+/**
+ * Danışmanın ödeme alacağı hesap (pazaryeri alt üye işyeri). Ödeme sağlayıcısında
+ * alt üye kaydı açıldığında `providerRef` dolar ve durum `verified` olur.
+ */
+export const payoutAccountStatus = pgEnum('payout_account_status', ['pending', 'verified', 'rejected']);
+
+export const payoutAccounts = pgTable('payout_accounts', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  holderName: text('holder_name').notNull(),
+  /** TR IBAN, boşluksuz büyük harf */
+  iban: text('iban').notNull(),
+  /** TCKN (11) veya VKN (10) */
+  taxId: text('tax_id').notNull(),
+  status: payoutAccountStatus('status').notNull().default('pending'),
+  providerRef: text('provider_ref'),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export const paymentStatus = pgEnum('payment_status', ['open', 'paid', 'cancelled', 'expired', 'refunded']);
+
+/** Komisyon ödeme talebi: danışman oluşturur, ödeyen herkese açık bağlantıdan kartla öder. */
+export const paymentRequests = pgTable(
+  'payment_requests',
+  {
+    id: id(),
+    /** Herkese açık ödeme bağlantısındaki tahmin edilemez belirteç */
+    publicToken: text('public_token').notNull().unique(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    listingId: uuid('listing_id').references(() => listings.id, { onDelete: 'set null' }),
+    /** Alıcı tarafındaki danışman (paylaşımlı işlem) */
+    buyerAgentId: uuid('buyer_agent_id').references(() => users.id),
+    /** Alıcı danışmanın payı (%) — komisyonun platform payı düşüldükten sonraki kısmından */
+    buyerShare: integer('buyer_share').notNull().default(0),
+    payerName: text('payer_name').notNull(),
+    payerPhone: text('payer_phone'),
+    payerEmail: text('payer_email'),
+    description: text('description').notNull(),
+    /** Kuruş cinsinden */
+    amount: bigint('amount', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull().default('TRY'),
+    /** Platform hizmet bedeli, binde değil on binde (500 = %5) */
+    platformFeeBps: integer('platform_fee_bps').notNull(),
+    status: paymentStatus('status').notNull().default('open'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    provider: text('provider').notNull(),
+    providerSessionId: text('provider_session_id'),
+    providerPaymentId: text('provider_payment_id'),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('payment_requests_creator_idx').on(t.createdBy, t.createdAt),
+    index('payment_requests_buyer_agent_idx').on(t.buyerAgentId),
+  ],
+);
+
+export const splitKind = pgEnum('split_kind', ['platform', 'seller_agent', 'buyer_agent']);
+export const payoutStatus = pgEnum('payout_status', ['pending', 'settled', 'held', 'failed']);
+
+/** Ödemenin paylaşımı: platform, ilan danışmanı, alıcı danışmanı */
+export const paymentSplits = pgTable(
+  'payment_splits',
+  {
+    id: id(),
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => paymentRequests.id, { onDelete: 'cascade' }),
+    kind: splitKind('kind').notNull(),
+    /** Platform payında null */
+    userId: uuid('user_id').references(() => users.id),
+    amount: bigint('amount', { mode: 'number' }).notNull(),
+    payoutStatus: payoutStatus('payout_status').notNull().default('pending'),
+    payoutRef: text('payout_ref'),
+    settledAt: timestamp('settled_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('payment_splits_kind_idx').on(t.requestId, t.kind),
+    index('payment_splits_user_idx').on(t.userId),
+  ],
+);
+
+/** Sağlayıcı bildirimleri (webhook) — tekrar gelen olay bir kez işlenir */
+export const paymentEvents = pgTable(
+  'payment_events',
+  {
+    id: id(),
+    provider: text('provider').notNull(),
+    eventId: text('event_id').notNull(),
+    type: text('type').notNull(),
+    payload: jsonb('payload').notNull(),
+    requestId: uuid('request_id').references(() => paymentRequests.id, { onDelete: 'set null' }),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('payment_events_provider_event_idx').on(t.provider, t.eventId)],
+);
+
+export const invoiceStatus = pgEnum('invoice_status', ['pending', 'issued', 'failed']);
+
+/**
+ * Platform hizmet bedeli faturası kaydı. e-Fatura/e-Arşiv entegrasyonu (kim keser
+ * kararı netleşince) bu kayıtları `issued` yapacak.
+ */
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: id(),
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => paymentRequests.id),
+    /** Faturanın kesildiği taraf (ilan danışmanı) */
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    /** Kuruş: KDV hariç, KDV, toplam */
+    net: bigint('net', { mode: 'number' }).notNull(),
+    vat: bigint('vat', { mode: 'number' }).notNull(),
+    total: bigint('total', { mode: 'number' }).notNull(),
+    vatRateBps: integer('vat_rate_bps').notNull(),
+    status: invoiceStatus('status').notNull().default('pending'),
+    number: text('number'),
+    issuedAt: timestamp('issued_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('invoices_request_idx').on(t.requestId)],
+);
+
 export type User = typeof users.$inferSelect;
 export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type VerificationDocument = typeof verificationDocuments.$inferSelect;
@@ -662,3 +798,5 @@ export type Interest = typeof interests.$inferSelect;
 export type InterestStatus = (typeof interestStatus.enumValues)[number];
 export type Message = typeof messages.$inferSelect;
 export type DevicePlatform = (typeof devicePlatform.enumValues)[number];
+export type PaymentRequest = typeof paymentRequests.$inferSelect;
+export type PaymentStatus = (typeof paymentStatus.enumValues)[number];

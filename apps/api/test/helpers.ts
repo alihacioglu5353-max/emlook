@@ -26,7 +26,7 @@ export async function createTestApp(): Promise<TestContext> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
-  const app = moduleRef.createNestApplication<INestApplication<App>>();
+  const app = moduleRef.createNestApplication<INestApplication<App>>({ rawBody: true });
   configureApp(app);
   await app.init();
   return {
@@ -39,7 +39,7 @@ export async function createTestApp(): Promise<TestContext> {
 
 export async function resetDb(ctx: TestContext): Promise<void> {
   await ctx.db.execute(sql`
-    TRUNCATE messages, conversation_participants, conversations, devices, interests, listing_swipes, listing_likes, listing_saves, listing_photos, listings, follows,
+    TRUNCATE payment_events, invoices, payment_splits, payment_requests, payout_accounts, messages, conversation_participants, conversations, devices, interests, listing_swipes, listing_likes, listing_saves, listing_photos, listings, follows,
              notifications, office_memberships, offices, audit_logs, consents,
              sessions, verification_documents, agent_profiles, otp_codes, users
              RESTART IDENTITY CASCADE

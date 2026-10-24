@@ -11,7 +11,10 @@ export type AuditAction =
   | 'office.approved'
   | 'office.rejected'
   | 'office.member_joined'
-  | 'office.member_transferred';
+  | 'office.member_transferred'
+  | 'payout_account.updated'
+  | 'payment_request.created'
+  | 'payment_request.cancelled';
 
 @Injectable()
 export class AuditService {

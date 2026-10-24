@@ -26,6 +26,14 @@ export interface Env {
   EIDS_PROVIDER: 'mock' | 'manual';
   MAX_LISTING_PHOTOS: number;
   PUSH_PROVIDER: 'log' | 'memory';
+  PAYMENT_PROVIDER: 'mock';
+  PAYMENT_WEBHOOK_SECRET: string;
+  /** Platform hizmet bedeli, on binde (500 = %5) */
+  PLATFORM_FEE_BPS: number;
+  VAT_RATE_BPS: number;
+  PAYMENT_LINK_DAYS: number;
+  /** Ödeme bağlantılarının açılacağı web adresi */
+  PUBLIC_WEB_URL: string;
 }
 
 const required = (raw: Record<string, unknown>, key: string): string => {
@@ -85,6 +93,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw new Error(`Geçersiz PUSH_PROVIDER: ${push}`);
   }
 
+  const paymentProvider = optional(raw, 'PAYMENT_PROVIDER', 'mock');
+  if (!['mock'].includes(paymentProvider)) {
+    throw new Error(`Geçersiz PAYMENT_PROVIDER: ${paymentProvider}`);
+  }
+
   const env: Env = {
     NODE_ENV: nodeEnv as Env['NODE_ENV'],
     PORT: int(raw, 'PORT', 3000),
@@ -111,6 +124,15 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     EIDS_PROVIDER: eids as Env['EIDS_PROVIDER'],
     MAX_LISTING_PHOTOS: int(raw, 'MAX_LISTING_PHOTOS', 20),
     PUSH_PROVIDER: push as Env['PUSH_PROVIDER'],
+    PAYMENT_PROVIDER: paymentProvider as Env['PAYMENT_PROVIDER'],
+    PAYMENT_WEBHOOK_SECRET:
+      nodeEnv === 'production'
+        ? required(raw, 'PAYMENT_WEBHOOK_SECRET')
+        : optional(raw, 'PAYMENT_WEBHOOK_SECRET', 'dev-payment-webhook-secret'),
+    PLATFORM_FEE_BPS: int(raw, 'PLATFORM_FEE_BPS', 500),
+    VAT_RATE_BPS: int(raw, 'VAT_RATE_BPS', 2000),
+    PAYMENT_LINK_DAYS: int(raw, 'PAYMENT_LINK_DAYS', 7),
+    PUBLIC_WEB_URL: optional(raw, 'PUBLIC_WEB_URL', 'http://localhost:3001').replace(/\/$/, ''),
   };
 
   if (env.NODE_ENV === 'production') {
@@ -122,7 +144,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     if (env.SMS_PROVIDER === 'memory') {
       throw new Error('Üretimde SMS_PROVIDER=memory kullanılamaz');
     }
-    for (const key of ['JWT_ACCESS_SECRET', 'OTP_SECRET'] as const) {
+    if (env.PAYMENT_PROVIDER === 'mock' && raw.ALLOW_MOCK_PAYMENTS !== 'true') {
+      // Gerçek sağlayıcı (Trinkle360) eklenene kadar üretimde ödeme alınmaz
+      throw new Error('Üretimde PAYMENT_PROVIDER=mock kullanılamaz (ALLOW_MOCK_PAYMENTS=true ile demo)');
+    }
+    for (const key of ['JWT_ACCESS_SECRET', 'OTP_SECRET', 'PAYMENT_WEBHOOK_SECRET'] as const) {
       if (env[key].length < 32) {
         throw new Error(`${key} üretimde en az 32 karakter olmalı`);
       }

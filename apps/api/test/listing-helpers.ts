@@ -8,6 +8,7 @@ export function client(ctx: TestContext, s: LoggedIn) {
     get: (p: string) => ctx.http().get(`/api/v1${p}`).set(bearer(s.accessToken)),
     post: (p: string, body: object = {}) => ctx.http().post(`/api/v1${p}`).set(bearer(s.accessToken)).send(body),
     patch: (p: string, body: object) => ctx.http().patch(`/api/v1${p}`).set(bearer(s.accessToken)).send(body),
+    put: (p: string, body: object) => ctx.http().put(`/api/v1${p}`).set(bearer(s.accessToken)).send(body),
     del: (p: string) => ctx.http().delete(`/api/v1${p}`).set(bearer(s.accessToken)),
     upload: (p: string, buf: Buffer, name: string) =>
       ctx.http().post(`/api/v1${p}`).set(bearer(s.accessToken)).attach('file', buf, name),
