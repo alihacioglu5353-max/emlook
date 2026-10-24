@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
@@ -124,6 +125,15 @@ class ApiClient {
   Future<T> put<T>(String path, {Object? data}) => _wrap(() => dio.put<T>(path, data: data));
 
   Future<T> delete<T>(String path) => _wrap(() => dio.delete<T>(path));
+
+  /// Yetkili dosya içeriği (ilan fotoğrafları vb.); belirteç yenileme dahil.
+  Future<Uint8List> bytes(String path) async {
+    final data = await _wrap(() => dio.get<List<int>>(
+          path,
+          options: Options(responseType: ResponseType.bytes),
+        ));
+    return Uint8List.fromList(data);
+  }
 
   Future<T> _wrap<T>(Future<Response<T>> Function() call) async {
     try {

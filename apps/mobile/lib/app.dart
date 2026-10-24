@@ -2,13 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/theme.dart';
+import 'features/agents/agent_profile_screen.dart';
 import 'features/auth/code_screen.dart';
 import 'features/auth/phone_screen.dart';
+import 'features/discover/discover_screen.dart';
+import 'features/discover/interests_screen.dart';
+import 'features/feed/feed_screen.dart';
+import 'features/feed/saved_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/listings/listing_detail_screen.dart';
+import 'features/listings/listing_form_screen.dart';
+import 'features/listings/my_listings_screen.dart';
+import 'features/messages/chat_screen.dart';
+import 'features/messages/conversations_screen.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/office/office_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
+import 'features/payments/payment_detail_screen.dart';
+import 'features/payments/payment_new_screen.dart';
+import 'features/payments/payments_screen.dart';
+import 'features/search/search_screen.dart';
 import 'features/session.dart';
+import 'features/shell.dart';
 import 'features/verification/verification_screen.dart';
 import 'widgets/common.dart';
 
@@ -34,6 +49,10 @@ class _EmlookAppState extends State<EmlookApp> {
   }
 }
 
+/// Yalnızca danışmanların açabileceği sayfalar
+bool _agentOnly(String loc) =>
+    loc == '/basvuru' || loc == '/ofis' || loc.startsWith('/portfoy') || loc.startsWith('/odemeler');
+
 /// Oturum durumuna göre yönlendirme:
 /// bilinmiyor → açılış · çıkış yapılmış → giriş · kayıt eksik → onboarding
 GoRouter buildRouter(Session session) => GoRouter(
@@ -51,9 +70,8 @@ GoRouter buildRouter(Session session) => GoRouter(
             if (session.me?.onboardingRequired ?? false) {
               return loc == '/kayit' ? null : '/kayit';
             }
-            if (onAuth || loc == '/kayit' || loc == '/acilis') return '/';
-            final agentOnly = loc == '/basvuru' || loc == '/ofis';
-            if (agentOnly && !(session.me?.isAgent ?? false)) return '/';
+            if (onAuth || loc == '/kayit' || loc == '/acilis') return '/akis';
+            if (_agentOnly(loc) && !(session.me?.isAgent ?? false)) return '/';
             return null;
         }
       },
@@ -65,13 +83,61 @@ GoRouter buildRouter(Session session) => GoRouter(
           routes: [
             GoRoute(
               path: 'kod',
-              builder: (_, state) =>
-                  CodeScreen(session: session, resendIn: state.extra as int? ?? 60),
+              builder: (_, state) => CodeScreen(session: session, resendIn: state.extra as int? ?? 60),
             ),
           ],
         ),
         GoRoute(path: '/kayit', builder: (_, _) => OnboardingScreen(session: session)),
-        GoRoute(path: '/', builder: (_, _) => HomeScreen(session: session)),
+
+        // Alt menülü sekmeler
+        StatefulShellRoute.indexedStack(
+          builder: (_, _, shell) => AppShell(session: session, shell: shell),
+          branches: [
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/akis', builder: (_, _) => FeedScreen(session: session)),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/kesfet', builder: (_, _) => DiscoverScreen(session: session)),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/ara', builder: (_, _) => SearchScreen(session: session)),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/mesajlar', builder: (_, _) => ConversationsScreen(session: session)),
+            ]),
+            StatefulShellBranch(routes: [
+              GoRoute(path: '/', builder: (_, _) => HomeScreen(session: session)),
+            ]),
+          ],
+        ),
+
+        // Tam ekran sayfalar
+        GoRoute(
+          path: '/ilan/:id',
+          builder: (_, s) => ListingDetailScreen(session: session, id: s.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/danisman/:id',
+          builder: (_, s) => AgentProfileScreen(session: session, id: s.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/mesajlar/:id',
+          builder: (_, s) => ChatScreen(session: session, id: s.pathParameters['id']!),
+        ),
+        GoRoute(path: '/kaydedilenler', builder: (_, _) => SavedScreen(session: session)),
+        GoRoute(path: '/talepler', builder: (_, _) => InterestsScreen(session: session)),
+        GoRoute(path: '/portfoy', builder: (_, _) => MyListingsScreen(session: session)),
+        GoRoute(path: '/portfoy/yeni', builder: (_, _) => ListingFormScreen(session: session)),
+        GoRoute(
+          path: '/portfoy/:id/duzenle',
+          builder: (_, s) => ListingFormScreen(session: session, id: s.pathParameters['id']),
+        ),
+        GoRoute(path: '/odemeler', builder: (_, _) => PaymentsScreen(session: session)),
+        GoRoute(path: '/odemeler/yeni', builder: (_, _) => PaymentNewScreen(session: session)),
+        GoRoute(
+          path: '/odemeler/:id',
+          builder: (_, s) => PaymentDetailScreen(session: session, id: s.pathParameters['id']!),
+        ),
         GoRoute(path: '/basvuru', builder: (_, _) => VerificationScreen(session: session)),
         GoRoute(path: '/ofis', builder: (_, _) => OfficeScreen(session: session)),
         GoRoute(path: '/bildirimler', builder: (_, _) => NotificationsScreen(session: session)),
@@ -82,6 +148,5 @@ class _Splash extends StatelessWidget {
   const _Splash();
 
   @override
-  Widget build(BuildContext context) =>
-      const Scaffold(body: Center(child: EmLogo(size: 32)));
+  Widget build(BuildContext context) => const Scaffold(body: Center(child: EmLogo(size: 32)));
 }

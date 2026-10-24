@@ -255,6 +255,7 @@ class AppNotification {
     required this.body,
     required this.read,
     required this.createdAt,
+    this.data = const {},
   });
 
   final String id;
@@ -263,6 +264,22 @@ class AppNotification {
   final String body;
   final bool read;
   final DateTime createdAt;
+  final Map<String, dynamic> data;
+
+  /// Bildirime dokununca açılacak sayfa (yoksa null)
+  String? get route {
+    String? s(String k) => data[k] as String?;
+    // Ekip yönetimi web panelinde; mobilde tüm ofis bildirimleri ofis ekranına gider.
+    if (type.startsWith('office.')) return '/ofis';
+    if (type.startsWith('interest.')) return '/talepler';
+    if (type.startsWith('listing.')) {
+      return s('listingId') == null ? null : '/ilan/${s('listingId')}';
+    }
+    if (type == 'social.followed') return s('userId') == null ? null : '/danisman/${s('userId')}';
+    if (type.startsWith('payment.')) return s('requestId') == null ? '/odemeler' : '/odemeler/${s('requestId')}';
+    if (type == 'message') return s('conversationId') == null ? '/mesajlar' : '/mesajlar/${s('conversationId')}';
+    return null;
+  }
 
   factory AppNotification.fromJson(Map<String, dynamic> j) => AppNotification(
         id: j['id'] as String,
@@ -271,5 +288,6 @@ class AppNotification {
         body: j['body'] as String,
         read: j['readAt'] != null,
         createdAt: DateTime.parse(j['createdAt'] as String),
+        data: (j['data'] as Map<String, dynamic>?) ?? const {},
       );
 }

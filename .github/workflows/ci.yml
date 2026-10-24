@@ -61,5 +61,18 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter analyze
-      - run: flutter test
+      - name: flutter analyze
+        # Bulgular PR'da satır açıklaması olarak görünsün diye makine biçimiyle
+        run: |
+          set +e
+          dart analyze --fatal-infos --format=machine > analyze.txt 2>&1
+          status=$?
+          while IFS='|' read -r sev type code file line col len msg; do
+            [ -z "$line" ] && continue
+            case "$sev" in ERROR) lvl=error ;; WARNING) lvl=warning ;; *) lvl=notice ;; esac
+            echo "::$lvl file=${file#$GITHUB_WORKSPACE/},line=$line,col=$col::$code: $msg"
+          done < analyze.txt
+          exit $status
+      - name: flutter test
+        if: success() || failure()
+        run: flutter test --reporter=github
