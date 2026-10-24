@@ -1,4 +1,3 @@
-import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -9,7 +8,7 @@ import '../core/theme.dart';
 /// Belirteç gerektiren görseller (ilan fotoğrafları) için küçük bellek önbelleği.
 class _ImageCache {
   static const _max = 80;
-  final _map = LinkedHashMap<String, Uint8List>();
+  final _map = <String, Uint8List>{}; // ekleme sırasını korur (LRU)
   final _pending = <String, Future<Uint8List>>{};
 
   Future<Uint8List> load(ApiClient api, String path) {

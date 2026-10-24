@@ -104,7 +104,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final last = _messages.isEmpty ? null : _messages.last.cursor;
       final page = await widget.session.api.get<Map<String, dynamic>>(
         '/conversations/${widget.id}/messages',
-        query: {if (last != null) 'after': last},
+        query: {'after': ?last},
       );
       _append(_parse(page));
     } catch (_) {
