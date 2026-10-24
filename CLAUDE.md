@@ -147,6 +147,7 @@ docker compose up -d          # PostgreSQL (port 5433) + Redis
 pnpm install
 pnpm --filter api db:migrate
 pnpm --filter api db:seed-locations   # il/ilçe/mahalle (bir kez)
+pnpm --filter api db:seed-demo        # her türden demo kullanıcı (0532 000 00 00–09)
 pnpm dev:api                  # http://localhost:3000/api/v1, Swagger: /docs
 pnpm --filter api test:e2e
 ```
