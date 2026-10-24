@@ -187,6 +187,136 @@ export const auditLogs = pgTable(
   (t) => [index('audit_logs_target_idx').on(t.targetType, t.targetId)],
 );
 
+// ---------------------------------------------------------------------------
+// E2 · Ofis hesabı
+// ---------------------------------------------------------------------------
+
+/** pending: yönetici incelemesinde · active: yayında · rejected · suspended */
+export const officeStatus = pgEnum('office_status', [
+  'pending',
+  'active',
+  'rejected',
+  'suspended',
+]);
+
+export const offices = pgTable(
+  'offices',
+  {
+    id: id(),
+    /** Platformda görünen ad (örn. "Yılmaz Gayrimenkul Kadıköy") */
+    name: text('name').notNull(),
+    /** Yetki belgesindeki ticari unvan */
+    legalName: text('legal_name').notNull(),
+    /** Taşınmaz Ticareti Yetki Belgesi no */
+    licenseNumber: text('license_number').notNull(),
+    city: text('city').notNull(),
+    district: text('district').notNull(),
+    address: text('address'),
+    phone: text('phone'),
+    email: text('email'),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    status: officeStatus('status').notNull().default('pending'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    reviewedBy: uuid('reviewed_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    rejectionReason: text('rejection_reason'),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('offices_status_idx').on(t.status),
+    // Bir danışman en fazla bir ofisin sahibi olabilir (reddedilenler hariç).
+    uniqueIndex('offices_owner_open_idx')
+      .on(t.ownerId)
+      .where(sql`status <> 'rejected'`),
+  ],
+);
+
+export const officeRole = pgEnum('office_role', ['owner', 'manager', 'agent']);
+
+/**
+ * requested : danışman katılma talebi gönderdi, ofis onayı bekleniyor
+ * invited   : ofis davet etti, danışmanın kabulü bekleniyor
+ * active    : ofis üyesi
+ * declined  : talep/davet reddedildi
+ * cancelled : talep/davet gönderen tarafından geri çekildi
+ * left      : danışman ayrıldı (veya başka ofise geçti)
+ * removed   : ofis tarafından çıkarıldı
+ */
+export const membershipStatus = pgEnum('membership_status', [
+  'requested',
+  'invited',
+  'active',
+  'declined',
+  'cancelled',
+  'left',
+  'removed',
+]);
+
+export const officeMemberships = pgTable(
+  'office_memberships',
+  {
+    id: id(),
+    officeId: uuid('office_id')
+      .notNull()
+      .references(() => offices.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: officeRole('role').notNull().default('agent'),
+    status: membershipStatus('status').notNull(),
+    /** Daveti gönderen ofis yöneticisi */
+    invitedBy: uuid('invited_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    /** Talebi/daveti sonuçlandıran kişi */
+    decidedBy: uuid('decided_by').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index('office_memberships_office_status_idx').on(t.officeId, t.status),
+    index('office_memberships_user_status_idx').on(t.userId, t.status),
+    // Bir danışman aynı anda yalnızca bir ofiste aktif olabilir.
+    uniqueIndex('office_memberships_one_active_idx')
+      .on(t.userId)
+      .where(sql`status = 'active'`),
+    // Aynı ofise aynı anda tek açık talep/davet.
+    uniqueIndex('office_memberships_one_open_idx')
+      .on(t.officeId, t.userId)
+      .where(sql`status in ('requested', 'invited', 'active')`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Uygulama içi bildirimler (E7'de push bildirimleriyle genişletilecek)
+// ---------------------------------------------------------------------------
+
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    /** İstemcinin yönlendirme için kullanacağı veriler (officeId vb.) */
+    data: jsonb('data').$type<Record<string, unknown>>(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index('notifications_user_created_idx').on(t.userId, t.createdAt)],
+);
+
 export type User = typeof users.$inferSelect;
 export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type VerificationDocument = typeof verificationDocuments.$inferSelect;
@@ -194,3 +324,8 @@ export type UserRole = (typeof userRole.enumValues)[number];
 export type VerificationStatus = (typeof verificationStatus.enumValues)[number];
 export type DocumentType = (typeof documentType.enumValues)[number];
 export type ConsentType = (typeof consentType.enumValues)[number];
+export type Office = typeof offices.$inferSelect;
+export type OfficeStatus = (typeof officeStatus.enumValues)[number];
+export type OfficeRole = (typeof officeRole.enumValues)[number];
+export type OfficeMembership = typeof officeMemberships.$inferSelect;
+export type MembershipStatus = (typeof membershipStatus.enumValues)[number];

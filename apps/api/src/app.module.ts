@@ -11,6 +11,8 @@ import { CommonModule } from './common/common.module.js';
 import { validateEnv, type Env } from './config/env.js';
 import { DbModule } from './db/db.module.js';
 import { HealthController } from './health.controller.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { OfficesModule } from './offices/offices.module.js';
 import { SmsModule } from './sms/sms.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -41,6 +43,8 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     AgentsModule,
     AdminModule,
+    NotificationsModule,
+    OfficesModule,
   ],
   controllers: [HealthController],
   providers: [

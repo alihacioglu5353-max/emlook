@@ -8,6 +8,7 @@ import {
 import { and, asc, count, eq } from 'drizzle-orm';
 import { AuditService } from '../common/audit.service.js';
 import { InjectDb, type Database } from '../db/db.module.js';
+import { activeOfficeOf } from '../db/queries.js';
 import {
   agentProfiles,
   users,
@@ -233,7 +234,15 @@ export class AgentsService {
       .limit(1);
     if (!row) throw new NotFoundException('Danışman bulunamadı');
     const { verificationStatus, ...card } = row;
-    return { ...card, isVerified: verificationStatus === 'approved' };
+    const office = await activeOfficeOf(this.db, agentId);
+    // Yalnızca onaylı ofis gösterilir; yoksa "Bağımsız Danışman"
+    const visible = office?.status === 'active' ? office : null;
+    return {
+      ...card,
+      isVerified: verificationStatus === 'approved',
+      office: visible && { id: visible.id, name: visible.name, role: visible.role },
+      independent: !visible,
+    };
   }
 
   /** Belge dosyasını akıtır. Sahiplik/rol kontrolü çağıran tarafta yapılır. */
