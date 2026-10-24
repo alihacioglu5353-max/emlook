@@ -49,7 +49,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       } catch (_) {}
       await _load();
     }
-    if (n.type.startsWith('office.') && mounted) context.push('/ofis');
+    final route = n.route;
+    if (route != null && mounted) context.push(route);
   }
 
   Future<void> _readAll() async {

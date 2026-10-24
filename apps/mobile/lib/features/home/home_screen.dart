@@ -20,7 +20,7 @@ class HomeScreen extends StatelessWidget {
         if (me == null) return const Scaffold();
         return Scaffold(
           appBar: AppBar(
-            title: const EmLogo(size: 22),
+            title: const Text('Profil'),
             actions: [
               _Bell(count: session.unreadCount, onTap: () => context.push('/bildirimler')),
               IconButton(
@@ -50,12 +50,28 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 20),
-                if (me.isAgent) ...[
+                if (me.role == 'admin')
+                  const Notice(
+                    title: 'Yönetici hesabı',
+                    text: 'Başvuru, ofis, ilan ve ödeme yönetimi Emlook web panelinden yapılır.',
+                  )
+                else if (me.isAgent) ...[
                   _AgentCard(status: me.verificationStatus!),
                   const SizedBox(height: 16),
                   _OfficeCard(me: me),
                 ] else
                   const _ConsumerCard(),
+                const SizedBox(height: 16),
+                _Menu(items: [
+                  if (me.isAgent) ...[
+                    (Icons.home_work_outlined, 'Portföyüm', '/portfoy'),
+                    (Icons.account_balance_wallet_outlined, 'Ödemeler', '/odemeler'),
+                  ],
+                  if (me.role != 'admin') (Icons.handshake_outlined, 'Talepler', '/talepler'),
+                  (Icons.bookmark_border, 'Kaydedilenler', '/kaydedilenler'),
+                  (Icons.notifications_none_rounded, 'Bildirimler', '/bildirimler'),
+                  if (me.isAgent) (Icons.person_search_outlined, 'Profilim (herkese görünen)', '/danisman/${me.id}'),
+                ]),
               ],
             ),
           ),
@@ -113,7 +129,7 @@ class _AgentCard extends StatelessWidget {
       VerificationStatus.approved => (
           NoticeTone.ok,
           'Onaylı danışmansın',
-          'Portföy paylaşımı ve eşleşme yakında açılacak.',
+          'Portföyüne ilan ekleyip meslektaşlarınla paylaşabilirsin.',
           'Başvuru detayları',
         ),
     };
@@ -196,10 +212,30 @@ class _ConsumerCard extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(20),
         child: Text(
-          'Portföyleri görüntüleme ve doğrulanmış danışmanlara talep bırakma özellikleri yakında burada.',
+          'Akış ve Keşfet\'te doğrulanmış danışmanların ilanlarını görebilir, beğendiğin ilan için "İlgileniyorum" diyebilirsin.',
           style: TextStyle(color: EmColors.inkSoft),
         ),
       ),
     );
   }
+}
+
+class _Menu extends StatelessWidget {
+  const _Menu({required this.items});
+  final List<(IconData, String, String)> items;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Column(children: [
+          for (final (i, (icon, label, path)) in items.indexed) ...[
+            if (i > 0) const Divider(height: 1, indent: 56, color: EmColors.line),
+            ListTile(
+              leading: Icon(icon, color: EmColors.ink),
+              title: Text(label),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(path),
+            ),
+          ],
+        ]),
+      );
 }

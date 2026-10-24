@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../core/api_client.dart';
+import '../core/locations.dart';
 import '../core/models.dart';
 import '../core/token_store.dart';
 
@@ -16,6 +17,7 @@ class Session extends ChangeNotifier {
 
   final TokenStore tokens;
   late final ApiClient api;
+  late final Locations locations = Locations(api);
 
   SessionState state = SessionState.unknown;
   Me? me;
@@ -25,6 +27,9 @@ class Session extends ChangeNotifier {
 
   /// Okunmamış bildirim sayısı (ana sayfadaki zil)
   int unreadCount = 0;
+
+  /// Okunmamış mesaj sayısı (alt menüdeki rozet)
+  int unreadMessages = 0;
 
   /// Uygulama açılışında kayıtlı oturumu doğrular.
   Future<void> bootstrap() async {
@@ -95,10 +100,12 @@ class Session extends ChangeNotifier {
   Future<void> refreshUnread() async {
     try {
       final res = await api.get<Map<String, dynamic>>('/notifications/unread-count');
+      final msgs = await api.get<Map<String, dynamic>>('/conversations/unread');
       unreadCount = (res['unread'] as num).toInt();
+      unreadMessages = (msgs['messages'] as num?)?.toInt() ?? 0;
       notifyListeners();
     } catch (_) {
-      // Sayı alınamazsa zil eski değeri gösterir.
+      // Sayı alınamazsa rozetler eski değeri gösterir.
     }
   }
 
@@ -111,6 +118,7 @@ class Session extends ChangeNotifier {
     await tokens.clear();
     me = null;
     unreadCount = 0;
+    unreadMessages = 0;
     _set(SessionState.signedOut);
   }
 
