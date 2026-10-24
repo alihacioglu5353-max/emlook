@@ -633,7 +633,7 @@ try {
   for (const u of DEMO_USERS.filter((x) => x.primary)) {
     console.log(`  ${u.phone.replace('+90', '0')}  ${u.fullName.padEnd(16)} ${u.label}`);
   }
-  console.log(`\n  + ${DEMO_USERS.length - DEMO_USERS.filter((x) => x.primary).length} ek demo kullanıcısı (0532 000 01 01–32)\n`);
+  console.log(`\n  + ${DEMO_USERS.length - DEMO_USERS.filter((x) => x.primary).length} ek demo kullanıcısı (0532 000 01 01–32 ve 02 01–40)\n`);
 } finally {
   await pool.end();
 }
