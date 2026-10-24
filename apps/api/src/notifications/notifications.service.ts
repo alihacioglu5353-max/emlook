@@ -15,7 +15,9 @@ export type NotificationType =
   | 'office.member_left'
   | 'office.member_transferred'
   | 'office.member_removed'
-  | 'office.role_changed';
+  | 'office.role_changed'
+  | 'social.followed'
+  | 'listing.liked';
 
 export interface NewNotification {
   userId: string;

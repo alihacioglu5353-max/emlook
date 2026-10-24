@@ -102,7 +102,7 @@ export class AgentsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Danışman kartı (ad, unvan, bölge, onay rozeti)' })
-  card(@Param('id', ParseUUIDPipe) id: string) {
-    return this.agents.publicCard(id);
+  card(@CurrentUser() user: AuthUser, @Param('id', ParseUUIDPipe) id: string) {
+    return this.agents.publicCard(id, user.id);
   }
 }
