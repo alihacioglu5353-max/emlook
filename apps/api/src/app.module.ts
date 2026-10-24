@@ -17,6 +17,7 @@ import { ListingsModule } from './listings/listings.module.js';
 import { MessagingModule } from './messaging/messaging.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { OfficesModule } from './offices/offices.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
 import { PushModule } from './push/push.module.js';
 import { SearchModule } from './search/search.module.js';
 import { SmsModule } from './sms/sms.module.js';
@@ -57,6 +58,7 @@ import { UsersModule } from './users/users.module.js';
     DiscoverModule,
     SearchModule,
     MessagingModule,
+    PaymentsModule,
   ],
   controllers: [HealthController],
   providers: [

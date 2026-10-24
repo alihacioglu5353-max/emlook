@@ -49,3 +49,26 @@ export const formatLocation = (
 
 export const sortTr = <T extends { name: string }>(rows: T[]) =>
   [...rows].sort((a, b) => a.name.localeCompare(b.name, "tr"));
+
+const moneyFmt = new Intl.NumberFormat("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Kuruş → "1.234,50 ₺" */
+export const formatKurus = (kurus: number) => `${moneyFmt.format(kurus / 100)} ₺`;
+
+/** "1.234,50" / "1234.5" / "1.234" → kuruş; geçersizse null */
+export function parseTl(input: string): number | null {
+  const s = input.trim().replace(/\s|₺/g, "");
+  if (!s) return null;
+  // Son virgül ondalık ayırıcı; noktalar binlik
+  const normalized = s.includes(",") ? s.replace(/\./g, "").replace(",", ".") : s.replace(/\.(?=\d{3}(\D|$))/g, "");
+  if (!/^\d+(\.\d{1,2})?$/.test(normalized)) return null;
+  return Math.round(Number(normalized) * 100);
+}
+
+export const PAYMENT_STATUS_LABEL: Record<"open" | "paid" | "cancelled" | "expired" | "refunded", string> = {
+  open: "Ödeme bekliyor",
+  paid: "Ödendi",
+  cancelled: "İptal edildi",
+  expired: "Süresi doldu",
+  refunded: "İade edildi",
+};

@@ -483,3 +483,56 @@ export interface MessagePage {
   items: ChatMessage[];
   nextCursor: string | null;
 }
+
+// ---- E8 · Ödeme ----
+
+export type PaymentStatus = "open" | "paid" | "cancelled" | "expired" | "refunded";
+
+export interface PayoutAccount {
+  holderName: string;
+  iban: string;
+  taxIdLast4: string;
+  status: "pending" | "verified" | "rejected";
+  updatedAt: string;
+}
+
+export interface PaymentRequestView {
+  id: string;
+  role: "seller" | "buyer";
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  description: string;
+  payer: { name: string; phone?: string | null; email?: string | null };
+  listing: { id: string; title: string } | null;
+  seller: { id: string; fullName: string | null };
+  buyerAgent: { id: string; fullName: string | null } | null;
+  buyerShare: number;
+  breakdown: { platformFee: number; seller: number; buyer: number; platformFeeBps: number };
+  myShare: number;
+  payouts: { kind: "platform" | "seller_agent" | "buyer_agent"; amount: number; payoutStatus: "pending" | "settled" | "held" | "failed" }[];
+  link: string | null;
+  expiresAt: string;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface PaymentSummary {
+  settled: number;
+  pending: number;
+  held: number;
+  openRequests: number;
+  platformFeeBps: number;
+}
+
+export interface PublicPayment {
+  status: PaymentStatus;
+  amount: number;
+  currency: string;
+  description: string;
+  payerName: string;
+  expiresAt: string;
+  paidAt: string | null;
+  payee: { fullName: string; isVerified: boolean; officeName: string | null };
+  provider: string;
+}

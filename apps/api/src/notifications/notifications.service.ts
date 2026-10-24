@@ -21,7 +21,9 @@ export type NotificationType =
   | 'listing.liked'
   | 'interest.received'
   | 'interest.accepted'
-  | 'interest.declined';
+  | 'interest.declined'
+  | 'payment.request_created'
+  | 'payment.paid';
 
 export interface NewNotification {
   userId: string;

@@ -43,6 +43,13 @@
       "when": 1792871219177,
       "tag": "0005_e7_messaging",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792871509144,
+      "tag": "0006_e8_payments",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ function targetOf(n: NotificationItem, role: Role | null): string | null {
   const data = n.data ?? {};
   if (n.type === "social.followed" && typeof data.userId === "string") return `/danisman/${data.userId}`;
   if (n.type === "listing.liked" && typeof data.listingId === "string") return `/ilan/${data.listingId}`;
+  if (n.type.startsWith("payment.") && typeof data.requestId === "string") return `/panel/odemeler/${data.requestId}`;
   if (n.type === "interest.received") return "/talepler";
   if (n.type.startsWith("interest.")) return "/talepler?yon=giden";
   if (!n.type.startsWith("office.")) return null;
