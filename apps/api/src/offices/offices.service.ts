@@ -24,6 +24,7 @@ import {
   type NewNotification,
 } from '../notifications/notifications.service.js';
 import type { CreateOfficeDto, UpdateOfficeDto } from './dto.js';
+import { isUniqueViolation } from '../common/db-errors.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 type Conn = Database | Tx;
@@ -32,12 +33,6 @@ const OPEN = ['requested', 'invited'] as const;
 
 const conflict = (code: string, message: string) =>
   new ConflictException({ code, message });
-
-/** Postgres benzersizlik ihlali (aynı anda iki istek). Drizzle hatayı `cause` içine sarar. */
-function isUniqueViolation(e: unknown): boolean {
-  const err = e as { code?: string; cause?: { code?: string } } | null;
-  return err?.code === '23505' || err?.cause?.code === '23505';
-}
 
 @Injectable()
 export class OfficesService {
