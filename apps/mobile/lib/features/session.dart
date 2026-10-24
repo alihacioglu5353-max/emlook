@@ -23,6 +23,9 @@ class Session extends ChangeNotifier {
   /// Kod ekranına geçerken girilen numara
   String? pendingPhone;
 
+  /// Okunmamış bildirim sayısı (ana sayfadaki zil)
+  int unreadCount = 0;
+
   /// Uygulama açılışında kayıtlı oturumu doğrular.
   Future<void> bootstrap() async {
     if (await tokens.refreshToken == null) {
@@ -86,6 +89,17 @@ class Session extends ChangeNotifier {
   Future<void> reloadMe() async {
     me = Me.fromJson(await api.get<Map<String, dynamic>>('/me'));
     _set(SessionState.signedIn);
+    await refreshUnread();
+  }
+
+  Future<void> refreshUnread() async {
+    try {
+      final res = await api.get<Map<String, dynamic>>('/notifications/unread-count');
+      unreadCount = (res['unread'] as num).toInt();
+      notifyListeners();
+    } catch (_) {
+      // Sayı alınamazsa zil eski değeri gösterir.
+    }
   }
 
   Future<void> logout() async {
@@ -96,6 +110,7 @@ class Session extends ChangeNotifier {
     }
     await tokens.clear();
     me = null;
+    unreadCount = 0;
     _set(SessionState.signedOut);
   }
 

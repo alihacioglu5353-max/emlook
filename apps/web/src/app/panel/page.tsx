@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMe } from "@/components/app-shell";
-import { Alert, Card, Eyebrow, StatusBadge } from "@/components/ui";
+import { Alert, Card, Eyebrow, RoleBadge, StatusBadge } from "@/components/ui";
 
 export default function PanelHome() {
   const { me } = useMe();
@@ -71,6 +71,29 @@ export default function PanelHome() {
           className="mt-6 inline-flex h-11 items-center rounded-full bg-ink px-5 text-sm font-semibold text-white hover:bg-black"
         >
           {copy.cta}
+        </Link>
+      </Card>
+
+      <Card className="mt-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-bold">Ofis</h2>
+          {me.office && <RoleBadge role={me.office.role} />}
+        </div>
+        {me.office ? (
+          <p className="mt-3 text-ink-soft">
+            <span className="font-semibold text-ink">{me.office.name}</span>
+            {me.office.status === "pending" && " · yönetici incelemesinde"}
+          </p>
+        ) : (
+          <p className="mt-3 text-ink-soft">
+            Bağımsız Danışman olarak görünüyorsun. Bir ofise katılabilir veya kendi ofisini açabilirsin.
+          </p>
+        )}
+        <Link
+          href="/panel/ofis"
+          className="mt-5 inline-flex h-11 items-center rounded-full border border-line px-5 text-sm font-semibold hover:border-ink-soft"
+        >
+          {me.office ? "Ofisime git" : "Ofis bul veya aç"}
         </Link>
       </Card>
     </div>

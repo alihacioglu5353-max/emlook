@@ -9,6 +9,7 @@ import type { ClientInfo } from '../common/auth.decorators.js';
 import { AuditService } from '../common/audit.service.js';
 import type { Env } from '../config/env.js';
 import { InjectDb, type Database } from '../db/db.module.js';
+import { activeOfficeOf } from '../db/queries.js';
 import {
   agentProfiles,
   consents,
@@ -53,6 +54,8 @@ export class UsersService {
               isVerified: verificationStatus === 'approved',
             }
           : null,
+      /** Aktif ofis üyeliği; danışman değilse veya ofisi yoksa null */
+      office: user.role === 'agent' ? await activeOfficeOf(this.db, userId) : null,
       consents: await this.currentConsents(userId),
     };
   }

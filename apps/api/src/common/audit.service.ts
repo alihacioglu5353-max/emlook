@@ -7,20 +7,28 @@ export type AuditAction =
   | 'agent.approved'
   | 'agent.rejected'
   | 'user.onboarded'
-  | 'consent.updated';
+  | 'consent.updated'
+  | 'office.approved'
+  | 'office.rejected'
+  | 'office.member_joined'
+  | 'office.member_transferred';
 
 @Injectable()
 export class AuditService {
   constructor(@InjectDb() private readonly db: Database) {}
 
-  async log(entry: {
-    actorId: string | null;
-    action: AuditAction;
-    targetType: string;
-    targetId?: string;
-    metadata?: Record<string, unknown>;
-  }): Promise<void> {
-    await this.db.insert(auditLogs).values({
+  /** `tx` verilirse kayıt çağıranın transaction'ı içinde yazılır. */
+  async log(
+    entry: {
+      actorId: string | null;
+      action: AuditAction;
+      targetType: string;
+      targetId?: string;
+      metadata?: Record<string, unknown>;
+    },
+    tx: Pick<Database, 'insert'> = this.db,
+  ): Promise<void> {
+    await tx.insert(auditLogs).values({
       actorId: entry.actorId,
       action: entry.action,
       targetType: entry.targetType,

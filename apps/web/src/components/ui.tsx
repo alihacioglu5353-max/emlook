@@ -178,3 +178,23 @@ export function Spinner({ label = "Yükleniyor" }: { label?: string }) {
     </div>
   );
 }
+
+/** Ofis içi rol rozeti: Sahip vurgulu, diğerleri sade */
+export function RoleBadge({ role }: { role: "owner" | "manager" | "agent" }) {
+  const label = { owner: "Sahip", manager: "Yönetici", agent: "Danışman" }[role];
+  const tone =
+    role === "owner"
+      ? "bg-brand text-white"
+      : role === "manager"
+        ? "bg-ink text-white"
+        : "bg-paper text-ink-soft border border-line";
+  return (
+    <span className={cx("inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-bold", tone)}>
+      {label}
+    </span>
+  );
+}
+
+export function EmptyState({ children }: { children: ReactNode }) {
+  return <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-ink-soft">{children}</p>;
+}

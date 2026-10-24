@@ -27,18 +27,29 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - OTP: HMAC-SHA256 özet, 3 dk ömür, 5 deneme, 60 sn yeniden gönderim, saatte 5 kod. SMS sağlayıcısı soyut (`console`, `memory`; üretim için Netgsm/İleti Merkezi eklenecek).
 - Denetim kaydı: onay/ret/onboarding işlemleri `audit_logs` tablosuna yazılır.
 
+## E2 tasarımı (ofis hesabı)
+- Yalnızca **onaylı danışman** ofis açar/katılır. Ofis `pending` → admin onayı → `active`; reddedilirse sahip bağımsıza döner.
+- `office_memberships.status`: `requested` (danışman talebi) · `invited` (ofis daveti) · `active` · `declined` · `cancelled` · `left` · `removed`.
+  Kısmi benzersiz indeksler: kullanıcı başına tek `active`; ofis+kullanıcı başına tek açık kayıt.
+- Transfer: başka ofisteyken talep/davet aktifleşirse eski üyelik `left` olur, eski ofisin sahip/yöneticilerine bildirim gider; diğer açık talepler geri çekilir.
+  Eşzamanlı aktifleşmede benzersizlik ihlali `CONCURRENT_CHANGE` (409) olarak döner.
+- Roller: `owner` (tek; ayrılamaz, önce sahiplik devri) · `manager` (talep/davet, danışman çıkarma) · `agent`.
+- Bildirimler: `notifications` tablosu + `NotificationsService.notify(items, tx)` — E7'de push buradan tetiklenecek.
+- Mobilde ofis açma ve ekip yönetimi yok (web paneli); mobil: durum, davet kabul/ret, arama + talep, ayrılma, bildirim listesi.
+
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
 - **Mobil (E1) tamam:** giriş, kod, kayıt, ana sayfa, başvuru + belge yükleme (Flutter 3.47, go_router 18, dio 5, flutter_secure_storage 11, file_picker 13 — `FilePicker.pickFiles` statiktir ve liste döndürür). `flutter analyze` temiz, testler geçiyor.
+- **E2 tamam (API, web, mobil):** ofis açma + admin onayı, arama/profil, talep, davet, transfer, roller, çıkarma, ayrılma, sahiplik devri, bildirimler. Toplam 28 e2e testi.
 - **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
-1. E2 Ofis hesabı: ofis oluşturma, "Sahip" rozeti, davet / katılma talebi, onay, transfer ve bildirimler
+1. E3 Portföy: ilan girişi, paylaşım oranı, medya, il–ilçe–mahalle verisi, görünürlük; EİDS doğrulaması API anlaşmasına kadar soyut arayüz
 2. Gerçek SMS sağlayıcısı (Netgsm / İleti Merkezi) ve S3 uyumlu depolama sürücüsü
 3. KVKK aydınlatma ve kullanım koşulları nihai metinleri (şu an yer tutucu)
-4. E3 Portföy + EİDS entegrasyonu (başvuru sonucu bekleniyor)
+4. E7 push bildirimleri (FCM/APNs) — `NotificationsService.notify` üzerinden
 
 ## Komutlar
 ```

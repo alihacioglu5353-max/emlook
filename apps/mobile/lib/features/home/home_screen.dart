@@ -12,41 +12,74 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final me = session.me!;
-    return Scaffold(
-      appBar: AppBar(
-        title: const EmLogo(size: 22),
-        actions: [
-          IconButton(
-            tooltip: 'Çıkış',
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: session.logout,
+    // Oturum değiştikçe (rozet, ofis, okunmamış sayısı) ekran yenilenir.
+    return ListenableBuilder(
+      listenable: session,
+      builder: (context, _) {
+        final me = session.me;
+        if (me == null) return const Scaffold();
+        return Scaffold(
+          appBar: AppBar(
+            title: const EmLogo(size: 22),
+            actions: [
+              _Bell(count: session.unreadCount, onTap: () => context.push('/bildirimler')),
+              IconButton(
+                tooltip: 'Çıkış',
+                icon: const Icon(Icons.logout_rounded),
+                onPressed: session.logout,
+              ),
+            ],
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: session.reloadMe,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          children: [
-            Row(
+          body: RefreshIndicator(
+            onRefresh: session.reloadMe,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
               children: [
-                Flexible(
-                  child: Text(
-                    'Merhaba ${me.firstName}',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        'Merhaba ${me.firstName}',
+                        style: Theme.of(context).textTheme.headlineMedium,
+                      ),
+                    ),
+                    if (me.isVerified) ...[
+                      const SizedBox(width: 8),
+                      const Icon(Icons.verified, color: EmColors.verified, semanticLabel: 'Onaylı danışman'),
+                    ],
+                  ],
                 ),
-                if (me.isVerified) ...[
-                  const SizedBox(width: 8),
-                  const Icon(Icons.verified, color: EmColors.verified, semanticLabel: 'Onaylı danışman'),
-                ],
+                const SizedBox(height: 20),
+                if (me.isAgent) ...[
+                  _AgentCard(status: me.verificationStatus!),
+                  const SizedBox(height: 16),
+                  _OfficeCard(me: me),
+                ] else
+                  const _ConsumerCard(),
               ],
             ),
-            const SizedBox(height: 20),
-            if (me.isAgent) _AgentCard(status: me.verificationStatus!) else const _ConsumerCard(),
-          ],
-        ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Bell extends StatelessWidget {
+  const _Bell({required this.count, required this.onTap});
+  final int count;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: count > 0 ? 'Bildirimler, $count okunmamış' : 'Bildirimler',
+      onPressed: onTap,
+      icon: Badge(
+        isLabelVisible: count > 0,
+        backgroundColor: EmColors.brand,
+        label: Text(count > 9 ? '9+' : '$count'),
+        child: const Icon(Icons.notifications_none_rounded),
       ),
     );
   }
@@ -104,6 +137,48 @@ class _AgentCard extends StatelessWidget {
               style: FilledButton.styleFrom(backgroundColor: EmColors.ink),
               onPressed: () => context.push('/basvuru'),
               child: Text(cta),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OfficeCard extends StatelessWidget {
+  const _OfficeCard({required this.me});
+  final Me me;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasOffice = me.officeName != null;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Ofis', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                if (me.officeRole != null) RoleChip(me.officeRole!),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              hasOffice
+                  ? '${me.officeName}${me.officeActive ? '' : ' · yönetici incelemesinde'}'
+                  : 'Bağımsız Danışman olarak görünüyorsun.',
+              style: TextStyle(
+                color: hasOffice ? EmColors.ink : EmColors.inkSoft,
+                fontWeight: hasOffice ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+            const SizedBox(height: 14),
+            OutlinedButton(
+              onPressed: () => context.push('/ofis'),
+              child: Text(hasOffice ? 'Ofisime git' : 'Ofisini bul'),
             ),
           ],
         ),

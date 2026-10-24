@@ -64,6 +64,7 @@ export interface Me {
   role: Role | null;
   onboardingRequired: boolean;
   agent: { verificationStatus: VerificationStatus; isVerified: boolean } | null;
+  office: { id: string; name: string; role: OfficeRole; status: OfficeStatus } | null;
   consents: { type: string; version: string; granted: boolean; at: string }[];
 }
 
@@ -114,4 +115,110 @@ export interface AdminDetail extends Verification {
     email: string | null;
     createdAt: string;
   };
+}
+
+// ---- E2 · Ofis ----
+
+export type OfficeRole = "owner" | "manager" | "agent";
+export type OfficeStatus = "pending" | "active" | "rejected" | "suspended";
+
+export interface OfficeRef {
+  id: string;
+  name: string;
+  city: string;
+  district: string;
+  status: OfficeStatus;
+  rejectionReason?: string | null;
+}
+
+export interface MyOffice {
+  membership: { membershipId: string; role: OfficeRole; office: OfficeRef } | null;
+  independent: boolean;
+  requests: { membershipId: string; office: OfficeRef; createdAt: string }[];
+  invitations: { membershipId: string; office: OfficeRef; createdAt: string }[];
+}
+
+export interface OfficeSearchItem {
+  id: string;
+  name: string;
+  city: string;
+  district: string;
+  memberCount: number;
+}
+
+export interface OfficePerson {
+  membershipId: string;
+  userId: string;
+  fullName: string | null;
+  phone: string;
+  role: OfficeRole;
+  isVerified: boolean;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+export interface OfficeManage {
+  myRole: OfficeRole;
+  office: OfficeRef & {
+    legalName: string;
+    licenseNumber: string;
+    address: string | null;
+    phone: string | null;
+    email: string | null;
+  };
+  members: OfficePerson[];
+  requests: OfficePerson[];
+  invitations: OfficePerson[];
+}
+
+export interface AdminOfficeItem {
+  id: string;
+  name: string;
+  legalName: string;
+  licenseNumber: string;
+  city: string;
+  district: string;
+  status: OfficeStatus;
+  createdAt: string;
+  reviewedAt: string | null;
+  owner: { id: string; fullName: string | null; phone: string };
+}
+
+export interface AdminOfficeDetail {
+  id: string;
+  name: string;
+  legalName: string;
+  licenseNumber: string;
+  city: string;
+  district: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  status: OfficeStatus;
+  rejectionReason: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+  memberCount: number;
+  owner: {
+    id: string;
+    fullName: string | null;
+    phone: string;
+    email: string | null;
+    verificationStatus: VerificationStatus | null;
+    licenseNumber: string | null;
+    businessName: string | null;
+    licenseMatches: boolean;
+  };
+}
+
+// ---- Bildirimler ----
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  readAt: string | null;
+  createdAt: string;
 }

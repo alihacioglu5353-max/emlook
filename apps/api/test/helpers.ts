@@ -1,13 +1,13 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from '../src/app.module.js';
 import { configureApp } from '../src/app.setup.js';
 import { DB, type Database } from '../src/db/db.module.js';
 import { runMigrations } from '../src/db/migrate.js';
-import { users } from '../src/db/schema.js';
+import { agentProfiles, users } from '../src/db/schema.js';
 import { MemorySmsService, SmsService } from '../src/sms/sms.service.js';
 
 export interface TestContext {
@@ -35,8 +35,9 @@ export async function createTestApp(): Promise<TestContext> {
 
 export async function resetDb(ctx: TestContext): Promise<void> {
   await ctx.db.execute(sql`
-    TRUNCATE audit_logs, consents, sessions, verification_documents,
-             agent_profiles, otp_codes, users RESTART IDENTITY CASCADE
+    TRUNCATE notifications, office_memberships, offices, audit_logs, consents,
+             sessions, verification_documents, agent_profiles, otp_codes, users
+             RESTART IDENTITY CASCADE
   `);
   ctx.sms.outbox.length = 0;
 }
@@ -83,3 +84,32 @@ export const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
 
 /** Geçerli küçük bir PDF içeriği (dosya türü baytlardan anlaşılır). */
 export const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
+
+/**
+ * Onaylı bir danışman hazırlar (başvuru akışı E1 testlerinde ayrıca denenir;
+ * burada onay doğrudan veritabanına yazılır).
+ */
+export async function approvedAgent(
+  ctx: TestContext,
+  phone: string,
+  fullName: string,
+): Promise<LoggedIn> {
+  const s = await login(ctx, phone);
+  await ctx
+    .http()
+    .post('/api/v1/me/onboarding')
+    .set(bearer(s.accessToken))
+    .send({ fullName, accountType: 'agent', kvkkClarification: true, termsOfUse: true })
+    .expect(201);
+  await ctx.db
+    .update(agentProfiles)
+    .set({
+      verificationStatus: 'approved',
+      licenseNumber: '34' + phone.slice(-5),
+      businessName: `${fullName} Gayrimenkul`,
+      city: 'İstanbul',
+      district: 'Kadıköy',
+    })
+    .where(eq(agentProfiles.userId, s.userId));
+  return s;
+}
