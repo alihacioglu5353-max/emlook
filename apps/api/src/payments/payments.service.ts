@@ -206,7 +206,14 @@ export class PaymentsService {
       from payment_splits s where s.user_id = ${userId}
     `);
     const r = rows[0]!;
-    return { settled: Number(r.settled), pending: Number(r.pending), held: Number(r.held), openRequests: Number(r.open) };
+    return {
+      settled: Number(r.settled),
+      pending: Number(r.pending),
+      held: Number(r.held),
+      openRequests: Number(r.open),
+      // Yeni talep ekranındaki bölüşüm önizlemesi için
+      platformFeeBps: this.config.get('PLATFORM_FEE_BPS', { infer: true }),
+    };
   }
 
   // ---- Herkese açık ödeme sayfası ----

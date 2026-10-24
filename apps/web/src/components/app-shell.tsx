@@ -69,7 +69,7 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
             { href: "/talepler", label: "Talepler" },
             { href: "/mesajlar", label: "Mesajlar" },
             { href: "/panel/portfoy", label: "Portföyüm" },
-            { href: "/panel/ofis", label: "Ofisim" },
+            { href: "/panel/odemeler", label: "Ödemeler" },
             // Onaylandıktan sonra başvuru sayfasına panelden ulaşılır
             ...(me.agent?.isVerified ? [] : [{ href: "/panel/basvuru", label: "Onay başvurusu" }]),
             { href: "/panel", label: "Panel" },

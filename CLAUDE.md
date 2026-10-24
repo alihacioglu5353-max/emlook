@@ -88,6 +88,20 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - Eşzamanlılık: `isConcurrencyConflict` (23505, 40P01, 40001) → 409 `CONCURRENT_CHANGE`.
 - Web: `/mesajlar` (iki bölme; mobilde tek), profil "Mesaj gönder", ilan "Danışmana mesaj gönder", talepte "Mesajlaş", menüde rozet.
 
+## E8 tasarımı (ödeme)
+- Tutarlar **kuruş** (bigint). `payments/money.ts`: `splitAmount` (platform bedeli on binde, kalan ilan/alıcı danışmanı; artık ilan danışmanında),
+  `vatFromGross`, TR IBAN (mod 97), TCKN/VKN denetimi.
+- `payout_accounts` (danışman IBAN → sağlayıcıda alt üye işyeri). Hesapsız danışmanın payı `held`; hesap eklenince `settled`.
+- `payment_requests`: danışman oluşturur (onaylı IBAN şart), herkese açık `public_token` bağlantısı (`/odeme/:token`), varsayılan 7 gün,
+  okuma anında süresi dolanlar `expired`. Alıcı danışman payı verilmezse ilandaki `cobroke_share`.
+- `PaymentProvider` soyut: `createCheckout`, `parseWebhook` (imza), `registerSubMerchant`. Şimdilik `MockPaymentProvider`
+  (HMAC-SHA256 `x-emlook-signature`, web'de test ödeme ekranı + `/pay/:token/mock-complete`). Üretimde mock `ALLOW_MOCK_PAYMENTS=true` olmadan açılmaz.
+- Webhook `POST /payments/webhook/:provider` ham gövdeyle (`rawBody: true`) doğrulanır; `payment_events (provider, event_id)` benzersiz → tekrar gelen olay bir kez işlenir.
+  Tahsil edilen ödeme talep iptal/süresi geçmiş olsa da `paid` kaydedilir.
+- Ödemede: `payment_splits` (platform, seller_agent, buyer_agent), platform bedeli için KDV ayrıştırılmış `invoices` (`pending`; e-Fatura kararı bekliyor), bildirimler.
+- Ortam: `PAYMENT_PROVIDER`, `PAYMENT_WEBHOOK_SECRET` (üretimde ≥32), `PLATFORM_FEE_BPS` (500, yer tutucu), `VAT_RATE_BPS` (2000), `PAYMENT_LINK_DAYS`, `PUBLIC_WEB_URL`.
+- Web: `/panel/odemeler` (özet, IBAN, talepler), `/yeni` (danışman arama, bölüşüm önizlemesi), `/[id]` (bağlantı kopyala, WhatsApp, iptal), herkese açık `/odeme/[token]`.
+
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
@@ -98,11 +112,12 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - **E5 tamam (API, web):** keşfet kartları, kaydırma, geri alma, ilgi/eşleşme akışı. Toplam 43 e2e testi.
 - **E6 tamam (API, web):** serbest metin ayrıştırma, filtreler, sıralama, danışman araması. Toplam 47 e2e + 28 birim testi.
 - **E7 tamam (API, web):** konuşmalar, ilan kartı paylaşımı, okunmamış, eşleşme konuşması, push soyutlaması ve cihaz kaydı. Toplam 51 e2e testi.
+- **E8 tamam (API, web; test sağlayıcısıyla):** IBAN hesabı, ödeme talebi ve bağlantısı, split, imzalı webhook, fatura kaydı. Toplam 55 e2e testi.
 - **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
-1. E8 Ödeme → E9 Admin; mobil ekranlar ve testleri en sonda
+1. E9 Admin; mobil ekranlar ve testleri en sonda
 2. Gerçek SMS sağlayıcısı (Netgsm / İleti Merkezi) ve S3 uyumlu depolama sürücüsü
 3. KVKK aydınlatma ve kullanım koşulları nihai metinleri (şu an yer tutucu)
 4. FCM sağlayıcısı (`PushProvider`) — Firebase projesi açılınca
@@ -123,4 +138,7 @@ pnpm --filter api test:e2e
 - `NODE_ENV=production` miras alınan bir süreçte API kısa geliştirme anahtarlarını reddeder; `NODE_ENV=development` verin.
 
 ## Açık konular
-Trinkle360 lisans ve split ödeme kabiliyeti, EİDS Taşınmaz API entegrasyon başvurusu, fatura modeli (kim keser) — ödeme modülüne başlamadan netleşmeli.
+- Trinkle360 lisans ve split ödeme kabiliyeti → gerçek `PaymentProvider` (şu an mock)
+- Fatura modeli (kim keser) ve e-Fatura/e-Arşiv entegratörü → `invoices.status = issued`
+- Platform hizmet bedeli oranı (`PLATFORM_FEE_BPS` şimdilik %5, yer tutucu)
+- EİDS Taşınmaz API entegrasyon başvurusu → gerçek `EidsProvider`
