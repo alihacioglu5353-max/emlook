@@ -1,8 +1,19 @@
+import 'dotenv/config';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { configureApp } from './app.setup.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(process.env.PORT ?? 3000);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  // Ters vekil (load balancer) arkasında gerçek istemci IP'si için
+  app.set('trust proxy', 1);
+  app.enableShutdownHooks();
+  configureApp(app);
+
+  const port = Number(process.env.PORT ?? 3000);
+  await app.listen(port);
+  Logger.log(`API hazır: http://localhost:${port}/api/v1 · Swagger: /docs`);
 }
 await bootstrap();
