@@ -10,6 +10,7 @@ import { JwtAuthGuard, RolesGuard } from './common/auth.guards.js';
 import { CommonModule } from './common/common.module.js';
 import { validateEnv, type Env } from './config/env.js';
 import { DbModule } from './db/db.module.js';
+import { FeedModule } from './feed/feed.module.js';
 import { HealthController } from './health.controller.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
@@ -47,6 +48,7 @@ import { UsersModule } from './users/users.module.js';
     NotificationsModule,
     OfficesModule,
     ListingsModule,
+    FeedModule,
   ],
   controllers: [HealthController],
   providers: [

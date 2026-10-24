@@ -61,12 +61,17 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
         ]
       : me?.role === "agent"
         ? [
+            { href: "/akis", label: "Akış" },
             { href: "/panel", label: "Genel bakış" },
             { href: "/panel/portfoy", label: "Portföyüm" },
             { href: "/panel/basvuru", label: "Onay başvurusu" },
             { href: "/panel/ofis", label: "Ofisim" },
           ]
-        : [{ href: "/panel", label: "Genel bakış" }];
+        : [
+            { href: "/akis", label: "Akış" },
+            { href: "/kaydedilenler", label: "Kaydedilenler" },
+            { href: "/panel", label: "Hesabım" },
+          ];
 
   // En uzun eşleşen menü öğesi etkin sayılır (/admin ile /admin/ofisler)
   const activeHref = nav

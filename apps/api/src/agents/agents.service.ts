@@ -5,7 +5,7 @@ import {
   NotFoundException,
   StreamableFile,
 } from '@nestjs/common';
-import { and, asc, count, eq } from 'drizzle-orm';
+import { and, asc, count, eq, sql } from 'drizzle-orm';
 import { AuditService } from '../common/audit.service.js';
 import { InjectDb, type Database } from '../db/db.module.js';
 import { activeOfficeOf } from '../db/queries.js';
@@ -217,7 +217,7 @@ export class AgentsService {
   }
 
   /** Diğer kullanıcıların görebileceği danışman kartı. */
-  async publicCard(agentId: string) {
+  async publicCard(agentId: string, viewerId?: string) {
     const [row] = await this.db
       .select({
         id: users.id,
@@ -227,6 +227,14 @@ export class AgentsService {
         district: agentProfiles.district,
         bio: agentProfiles.bio,
         verificationStatus: agentProfiles.verificationStatus,
+        followerCount: sql<number>`(select count(*)::int from follows f where f.followee_id = "users"."id")`,
+        followingCount: sql<number>`(select count(*)::int from follows f where f.follower_id = "users"."id")`,
+        activeListingCount: sql<number>`(
+          select count(*)::int from listings l where l.owner_id = "users"."id" and l.status = 'active'
+        )`,
+        followedByMe: viewerId
+          ? sql<boolean>`exists (select 1 from follows f where f.follower_id = ${viewerId} and f.followee_id = "users"."id")`
+          : sql<boolean>`false`,
       })
       .from(users)
       .innerJoin(agentProfiles, eq(agentProfiles.userId, users.id))

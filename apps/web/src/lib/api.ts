@@ -343,3 +343,53 @@ export interface ListingInput {
   isDemo: boolean;
   propertyNumber?: string;
 }
+
+// ---- E4 · Akış ----
+
+export interface Page<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+export interface Reaction {
+  listingId: string;
+  likeCount: number;
+  likedByMe: boolean;
+  savedByMe: boolean;
+}
+
+export interface FollowState {
+  agentId: string;
+  followerCount: number;
+  followedByMe: boolean;
+}
+
+export interface PersonCard {
+  id: string;
+  fullName: string | null;
+  isAgent: boolean;
+  isVerified: boolean;
+  businessName: string | null;
+  city: string | null;
+  district: string | null;
+  officeName: string | null;
+  followerCount: number;
+  activeListingCount: number;
+  followedByMe: boolean;
+}
+
+export interface AgentProfileCard {
+  id: string;
+  fullName: string | null;
+  businessName: string | null;
+  city: string | null;
+  district: string | null;
+  bio: string | null;
+  isVerified: boolean;
+  office: { id: string; name: string; role: OfficeRole } | null;
+  independent: boolean;
+  followerCount: number;
+  followingCount: number;
+  activeListingCount: number;
+  followedByMe: boolean;
+}
