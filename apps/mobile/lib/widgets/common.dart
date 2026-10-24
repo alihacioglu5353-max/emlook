@@ -127,3 +127,38 @@ void showError(BuildContext context, Object error) {
     SnackBar(content: Text(error.toString()), backgroundColor: EmColors.brand),
   );
 }
+
+class RoleChip extends StatelessWidget {
+  const RoleChip(this.role, {super.key});
+  final OfficeRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg) = switch (role) {
+      OfficeRole.owner => (EmColors.brand, Colors.white),
+      OfficeRole.manager => (EmColors.ink, Colors.white),
+      OfficeRole.agent => (EmColors.paper, EmColors.inkSoft),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(99),
+        border: role == OfficeRole.agent ? Border.all(color: EmColors.line) : null,
+      ),
+      child: Text(role.label, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w800)),
+    );
+  }
+}
+
+/// "3 dk önce", "dün" gibi kısa göreli zaman
+String timeAgo(DateTime t, [DateTime? now]) {
+  final d = (now ?? DateTime.now()).difference(t);
+  if (d.inMinutes < 1) return 'az önce';
+  if (d.inHours < 1) return '${d.inMinutes} dk önce';
+  if (d.inDays < 1) return '${d.inHours} sa önce';
+  if (d.inDays == 1) return 'dün';
+  if (d.inDays < 7) return '${d.inDays} gün önce';
+  final l = t.toLocal();
+  return '${l.day.toString().padLeft(2, '0')}.${l.month.toString().padLeft(2, '0')}.${l.year}';
+}

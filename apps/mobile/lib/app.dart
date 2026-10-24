@@ -5,6 +5,8 @@ import 'core/theme.dart';
 import 'features/auth/code_screen.dart';
 import 'features/auth/phone_screen.dart';
 import 'features/home/home_screen.dart';
+import 'features/notifications/notifications_screen.dart';
+import 'features/office/office_screen.dart';
 import 'features/onboarding/onboarding_screen.dart';
 import 'features/session.dart';
 import 'features/verification/verification_screen.dart';
@@ -50,7 +52,8 @@ GoRouter buildRouter(Session session) => GoRouter(
               return loc == '/kayit' ? null : '/kayit';
             }
             if (onAuth || loc == '/kayit' || loc == '/acilis') return '/';
-            if (loc == '/basvuru' && !(session.me?.isAgent ?? false)) return '/';
+            final agentOnly = loc == '/basvuru' || loc == '/ofis';
+            if (agentOnly && !(session.me?.isAgent ?? false)) return '/';
             return null;
         }
       },
@@ -70,6 +73,8 @@ GoRouter buildRouter(Session session) => GoRouter(
         GoRoute(path: '/kayit', builder: (_, _) => OnboardingScreen(session: session)),
         GoRoute(path: '/', builder: (_, _) => HomeScreen(session: session)),
         GoRoute(path: '/basvuru', builder: (_, _) => VerificationScreen(session: session)),
+        GoRoute(path: '/ofis', builder: (_, _) => OfficeScreen(session: session)),
+        GoRoute(path: '/bildirimler', builder: (_, _) => NotificationsScreen(session: session)),
       ],
     );
 
