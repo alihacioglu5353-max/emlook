@@ -209,7 +209,12 @@ function InterestRow({
           </Button>
         )}
         {item.status === "accepted" && (
-          <span className="text-sm font-semibold text-ok">Eşleştiniz · mesajlaşma yakında</span>
+          <Link
+            href={item.conversationId ? `/mesajlar/${item.conversationId}` : "/mesajlar"}
+            className="inline-flex h-9 items-center rounded-full bg-ok px-4 text-sm font-semibold text-white hover:opacity-90"
+          >
+            Mesajlaş
+          </Link>
         )}
       </div>
       {item.note && (

@@ -75,6 +75,19 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - Migration 0004 (özel SQL): `pg_trgm` + `search_text` GIN indeksi — şemada tanımlı değil.
 - Web: `/ara` (URL tek kaynak, paylaşılabilir), üst çubukta hızlı arama.
 
+## E7 tasarımı (mesajlaşma ve push)
+- `messaging/`: iki kişi arasında tek konuşma (`conversations.pair_key` = küçük:büyük kimlik), `conversation_participants.last_read_at`,
+  `messages` (`text` | `listing` | `system`; `seq` bigserial = imleç; `created_at` clock_timestamp).
+- Yazma kuralı: var olan konuşma · onaylı danışmana herkes · danışman yalnızca kendisine ilgi göstermiş mülk sahibine. Yönetici yazamaz.
+- `GET /conversations` (son mesaj, okunmamış), `/conversations/unread`, `/with/:userId`, `POST /conversations {userId, listingId?, text?}`,
+  `GET /:id/messages?cursor=|after=` (yoklama), `POST /:id/messages`, `POST /:id/read`. Eşleşmede `onMatch` konuşma + sistem mesajı.
+- Gerçek zamanlı yok: web 4 sn'de bir `after` ile yoklar, liste 15 sn, rozet 30 sn. (Ölçek gelince SSE/WebSocket.)
+- `push/`: `PushProvider` (`log` | `memory`; FCM eklenecek), `/me/devices` kayıt/silme, geçersiz belirteç temizliği.
+  `NotificationsService.notify` ve her mesaj `PushService.dispatch` ile arka planda push gönderir (testte `flush()`).
+- İmleç notu: JS tarihi ms, Postgres µs → zaman imleçli sorgularda sütun `date_trunc('milliseconds', …)`.
+- Eşzamanlılık: `isConcurrencyConflict` (23505, 40P01, 40001) → 409 `CONCURRENT_CHANGE`.
+- Web: `/mesajlar` (iki bölme; mobilde tek), profil "Mesaj gönder", ilan "Danışmana mesaj gönder", talepte "Mesajlaş", menüde rozet.
+
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
@@ -84,14 +97,15 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - **E4 tamam (API, web):** akış (Emlook Ağı / Benim Ağım), takip, beğeni, kaydetme, öneriler, danışman profili. Toplam 39 e2e testi.
 - **E5 tamam (API, web):** keşfet kartları, kaydırma, geri alma, ilgi/eşleşme akışı. Toplam 43 e2e testi.
 - **E6 tamam (API, web):** serbest metin ayrıştırma, filtreler, sıralama, danışman araması. Toplam 47 e2e + 28 birim testi.
+- **E7 tamam (API, web):** konuşmalar, ilan kartı paylaşımı, okunmamış, eşleşme konuşması, push soyutlaması ve cihaz kaydı. Toplam 51 e2e testi.
 - **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
-1. E7 Mesajlaşma → E8 Ödeme → E9 Admin; mobil ekranlar ve testleri en sonda
+1. E8 Ödeme → E9 Admin; mobil ekranlar ve testleri en sonda
 2. Gerçek SMS sağlayıcısı (Netgsm / İleti Merkezi) ve S3 uyumlu depolama sürücüsü
 3. KVKK aydınlatma ve kullanım koşulları nihai metinleri (şu an yer tutucu)
-4. E7 push bildirimleri (FCM/APNs) — `NotificationsService.notify` üzerinden
+4. FCM sağlayıcısı (`PushProvider`) — Firebase projesi açılınca
 
 ## Komutlar
 ```

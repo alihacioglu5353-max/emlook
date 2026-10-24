@@ -46,7 +46,7 @@ export class FeedService {
     if (q.scope === 'network') conds.push(inNetworkOf(viewer.id));
     if (q.dealType) conds.push(eq(listings.dealType, q.dealType));
     if (cursor) {
-      conds.push(sql`("listings"."published_at", "listings"."id") < (${cursor.at.toISOString()}::timestamptz, ${cursor.id}::uuid)`);
+      conds.push(sql`(date_trunc('milliseconds', "listings"."published_at"), "listings"."id") < (${cursor.at.toISOString()}::timestamptz, ${cursor.id}::uuid)`);
     }
     const items = await listingCards(this.db, viewer, {
       where: and(...conds)!,
@@ -62,7 +62,7 @@ export class FeedService {
     const cursor = decodeCursor(q.cursor);
     const conds: SQL[] = [visibleActive(viewer), eq(listings.ownerId, agentId)];
     if (cursor) {
-      conds.push(sql`("listings"."published_at", "listings"."id") < (${cursor.at.toISOString()}::timestamptz, ${cursor.id}::uuid)`);
+      conds.push(sql`(date_trunc('milliseconds', "listings"."published_at"), "listings"."id") < (${cursor.at.toISOString()}::timestamptz, ${cursor.id}::uuid)`);
     }
     const items = await listingCards(this.db, viewer, {
       where: and(...conds)!,
@@ -78,7 +78,7 @@ export class FeedService {
     const cursor = decodeCursor(q.cursor);
     const conds: SQL[] = [eq(listingSaves.userId, viewer.id), visibleActive(viewer)];
     if (cursor) {
-      conds.push(sql`(${listingSaves.createdAt}, ${listingSaves.listingId}) < (${cursor.at.toISOString()}::timestamptz, ${cursor.id}::uuid)`);
+      conds.push(sql`(date_trunc('milliseconds', ${listingSaves.createdAt}), ${listingSaves.listingId}) < (${cursor.at.toISOString()}::timestamptz, ${cursor.id}::uuid)`);
     }
     const saves = await this.db
       .select({ listingId: listingSaves.listingId, savedAt: listingSaves.createdAt })
@@ -221,7 +221,7 @@ export class FeedService {
       kind === 'followers' ? [follows.followeeId, follows.followerId] : [follows.followerId, follows.followeeId];
     const conds: SQL[] = [eq(selfCol, agentId), eq(users.status, 'active')];
     if (cursor) {
-      conds.push(sql`(${follows.createdAt}, ${otherCol}) < (${cursor.at.toISOString()}::timestamptz, ${cursor.id}::uuid)`);
+      conds.push(sql`(date_trunc('milliseconds', ${follows.createdAt}), ${otherCol}) < (${cursor.at.toISOString()}::timestamptz, ${cursor.id}::uuid)`);
     }
     const rows = await this.db
       .select({ userId: otherCol, at: follows.createdAt })

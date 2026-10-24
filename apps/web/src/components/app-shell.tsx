@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useEffect, type ReactNode } from "react";
 import { api, type Me, type Role } from "@/lib/api";
+import { useUnreadMessages } from "./chat";
 import { NotificationBell } from "./notification-bell";
 import { Alert, Logo, Spinner, VerifiedIcon } from "./ui";
 
@@ -52,6 +53,8 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
   }
 
   const ready = me && !me.onboardingRequired && (!allow || (me.role && allow.includes(me.role)));
+  const unread = useUnreadMessages(!!ready && me?.role !== "admin");
+  const unreadCount = unread.data?.conversations ?? 0;
 
   const nav =
     me?.role === "admin"
@@ -64,6 +67,7 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
             { href: "/akis", label: "Akış" },
             { href: "/kesfet", label: "Keşfet" },
             { href: "/talepler", label: "Talepler" },
+            { href: "/mesajlar", label: "Mesajlar" },
             { href: "/panel/portfoy", label: "Portföyüm" },
             { href: "/panel/ofis", label: "Ofisim" },
             // Onaylandıktan sonra başvuru sayfasına panelden ulaşılır
@@ -74,6 +78,7 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
             { href: "/akis", label: "Akış" },
             { href: "/kesfet", label: "Keşfet" },
             { href: "/talepler", label: "Taleplerim" },
+            { href: "/mesajlar", label: "Mesajlar" },
             { href: "/kaydedilenler", label: "Kaydedilenler" },
             { href: "/panel", label: "Hesabım" },
           ];
@@ -91,6 +96,11 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
       }`}
     >
       {n.label}
+      {n.href === "/mesajlar" && unreadCount > 0 && (
+        <span className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-white">
+          {unreadCount}
+        </span>
+      )}
     </Link>
   ));
 
@@ -106,7 +116,7 @@ export function AppShell({ allow, children }: { allow?: Role[]; children: ReactN
             {ready && me.role !== "admin" && <HeaderSearch />}
             {ready && <NotificationBell role={me.role} />}
             {me && (
-              <span className="hidden items-center gap-1.5 text-sm font-semibold sm:inline-flex">
+              <span className="hidden items-center gap-1.5 whitespace-nowrap text-sm font-semibold sm:inline-flex">
                 {me.fullName}
                 {me.agent?.isVerified && (
                   <VerifiedIcon className="h-4 w-4 text-[#2f7de1]" aria-label="Onaylı danışman" />
@@ -154,7 +164,7 @@ function HeaderSearch() {
     <>
       <form
         role="search"
-        className="hidden xl:block"
+        className="hidden 2xl:block"
         onSubmit={(e) => {
           e.preventDefault();
           const q = new FormData(e.currentTarget).get("q")?.toString().trim() ?? "";
@@ -172,7 +182,7 @@ function HeaderSearch() {
       <Link
         href="/ara"
         aria-label="Ara"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-paper hover:text-ink xl:hidden"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft hover:bg-paper hover:text-ink 2xl:hidden"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden>
           <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="1.8" />

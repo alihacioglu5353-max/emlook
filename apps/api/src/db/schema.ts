@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  bigserial,
   boolean,
   index,
   integer,
@@ -566,6 +567,79 @@ export const interests = pgTable(
   ],
 );
 
+// ---- E7 · Mesajlaşma ve cihazlar ----
+
+/**
+ * İki kişi arasında tek konuşma (WhatsApp gibi); ilan bağlamı mesaj düzeyinde taşınır.
+ * pair_key = küçük kimlik + ':' + büyük kimlik.
+ */
+export const conversations = pgTable('conversations', {
+  id: id(),
+  pairKey: text('pair_key').notNull().unique(),
+  lastMessageAt: timestamp('last_message_at', { withTimezone: true }),
+  createdAt: createdAt(),
+});
+
+export const conversationParticipants = pgTable(
+  'conversation_participants',
+  {
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    lastReadAt: timestamp('last_read_at', { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('conversation_participants_pk').on(t.conversationId, t.userId),
+    index('conversation_participants_user_idx').on(t.userId),
+  ],
+);
+
+export const messageKind = pgEnum('message_kind', ['text', 'listing', 'system']);
+
+export const messages = pgTable(
+  'messages',
+  {
+    id: id(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    /** Sistem mesajında null */
+    senderId: uuid('sender_id').references(() => users.id, { onDelete: 'set null' }),
+    kind: messageKind('kind').notNull().default('text'),
+    body: text('body').notNull(),
+    /** Paylaşılan ilan (ilan kartı olarak gösterilir) */
+    listingId: uuid('listing_id').references(() => listings.id, { onDelete: 'set null' }),
+    /** Ekleme sırası: sayfalama ve yoklama imleci (aynı işlemdeki mesajlar da sıralı) */
+    seq: bigserial('seq', { mode: 'number' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .default(sql`clock_timestamp()`),
+  },
+  (t) => [index('messages_conversation_seq_idx').on(t.conversationId, t.seq)],
+);
+
+export const devicePlatform = pgEnum('device_platform', ['android', 'ios', 'web']);
+
+/** Push bildirimi için cihaz belirteçleri (FCM/APNs) */
+export const devices = pgTable(
+  'devices',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    token: text('token').notNull().unique(),
+    platform: devicePlatform('platform').notNull(),
+    createdAt: createdAt(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('devices_user_idx').on(t.userId)],
+);
+
 export type User = typeof users.$inferSelect;
 export type AgentProfile = typeof agentProfiles.$inferSelect;
 export type VerificationDocument = typeof verificationDocuments.$inferSelect;
@@ -586,3 +660,5 @@ export type ListingStatus = (typeof listingStatus.enumValues)[number];
 export type EidsStatus = (typeof eidsStatus.enumValues)[number];
 export type Interest = typeof interests.$inferSelect;
 export type InterestStatus = (typeof interestStatus.enumValues)[number];
+export type Message = typeof messages.$inferSelect;
+export type DevicePlatform = (typeof devicePlatform.enumValues)[number];

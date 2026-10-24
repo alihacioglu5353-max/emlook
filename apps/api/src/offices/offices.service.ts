@@ -24,7 +24,7 @@ import {
   type NewNotification,
 } from '../notifications/notifications.service.js';
 import type { CreateOfficeDto, UpdateOfficeDto } from './dto.js';
-import { isUniqueViolation } from '../common/db-errors.js';
+import { isConcurrencyConflict, isUniqueViolation } from '../common/db-errors.js';
 
 type Tx = Parameters<Parameters<Database['transaction']>[0]>[0];
 type Conn = Database | Tx;
@@ -742,7 +742,7 @@ export class OfficesService {
     try {
       return await fn();
     } catch (e) {
-      if (isUniqueViolation(e)) {
+      if (isConcurrencyConflict(e)) {
         throw conflict(
           'CONCURRENT_CHANGE',
           'Danışmanın ofis üyeliği aynı anda değişti; sayfayı yenileyip tekrar deneyin',

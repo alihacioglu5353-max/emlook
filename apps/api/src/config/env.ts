@@ -25,6 +25,7 @@ export interface Env {
   /** mock: geliştirme/test · manual: yönetici elle doğrular (EİDS API entegrasyonuna kadar) */
   EIDS_PROVIDER: 'mock' | 'manual';
   MAX_LISTING_PHOTOS: number;
+  PUSH_PROVIDER: 'log' | 'memory';
 }
 
 const required = (raw: Record<string, unknown>, key: string): string => {
@@ -79,6 +80,11 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     throw new Error(`Geçersiz EIDS_PROVIDER: ${eids}`);
   }
 
+  const push = optional(raw, 'PUSH_PROVIDER', 'log');
+  if (!['log', 'memory'].includes(push)) {
+    throw new Error(`Geçersiz PUSH_PROVIDER: ${push}`);
+  }
+
   const env: Env = {
     NODE_ENV: nodeEnv as Env['NODE_ENV'],
     PORT: int(raw, 'PORT', 3000),
@@ -104,6 +110,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     ADMIN_PHONES: list(raw, 'ADMIN_PHONES'),
     EIDS_PROVIDER: eids as Env['EIDS_PROVIDER'],
     MAX_LISTING_PHOTOS: int(raw, 'MAX_LISTING_PHOTOS', 20),
+    PUSH_PROVIDER: push as Env['PUSH_PROVIDER'],
   };
 
   if (env.NODE_ENV === 'production') {

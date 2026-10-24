@@ -1,6 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 
-/** Zaman + kimlik çiftiyle sabit sıralı sayfalama imleci (base64url). */
+/**
+ * Zaman + kimlik çiftiyle sabit sıralı sayfalama imleci (base64url).
+ * JavaScript tarihi milisaniye hassasiyetindedir; Postgres mikro saniye tutar.
+ * Bu yüzden karşılaştırmalarda sütun date_trunc('milliseconds', …) ile kırpılır.
+ */
 export interface Cursor {
   at: Date;
   id: string;

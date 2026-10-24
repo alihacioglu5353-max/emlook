@@ -22,6 +22,7 @@ import {
 } from '../db/schema.js';
 import { listingCards, photoPath, visibleActive, type Viewer } from '../listings/listing-cards.js';
 import { ListingsService } from '../listings/listings.service.js';
+import { MessagingService } from '../messaging/messaging.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { DiscoverQuery, InterestListQuery, SwipeDto } from './dto.js';
 
@@ -36,6 +37,7 @@ export class DiscoverService {
     @InjectDb() private readonly db: Database,
     private readonly listings: ListingsService,
     private readonly notifications: NotificationsService,
+    private readonly messaging: MessagingService,
   ) {}
 
   // ---- Keşfet kartları ----
@@ -194,6 +196,8 @@ export class DiscoverService {
       await tx.update(interests).set({ status: decision, decidedAt: new Date() }).where(eq(interests.id, id));
       const [{ title }] = await tx.select({ title: listings.title }).from(listings).where(eq(listings.id, row.listingId));
       const [{ fullName }] = await tx.select({ fullName: users.fullName }).from(users).where(eq(users.id, viewer.id));
+      // Eşleşme: konuşma açılır, sistem mesajı eklenir
+      if (decision === 'accepted') await this.messaging.onMatch(tx, row.ownerId, row.requesterId, row.listingId, title);
       await this.notifications.notify(
         decision === 'accepted'
           ? {
@@ -341,6 +345,11 @@ export class DiscoverService {
         requesterVerified: sql<boolean>`${reqProfile.verificationStatus} = 'approved'`,
         ownerId: owner.id,
         ownerName: owner.fullName,
+        conversationId: sql<string | null>`(
+          select c.id from conversations c
+          where c.pair_key in (${interests.ownerId}::text || ':' || ${interests.requesterId}::text,
+                               ${interests.requesterId}::text || ':' || ${interests.ownerId}::text)
+        )`,
       })
       .from(interests)
       .innerJoin(listings, eq(listings.id, interests.listingId))
@@ -375,6 +384,7 @@ export class DiscoverService {
         isVerified: r.requesterVerified ?? false,
       },
       owner: { id: r.ownerId, fullName: r.ownerName },
+      conversationId: r.status === 'accepted' ? r.conversationId : null,
     }));
   }
 }
