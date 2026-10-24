@@ -14,6 +14,7 @@ process.env.DATABASE_URL =
 process.env.JWT_ACCESS_SECRET = 'test-jwt-secret';
 process.env.OTP_SECRET = 'test-otp-secret';
 process.env.SMS_PROVIDER = 'memory';
+process.env.PUSH_PROVIDER = 'memory';
 process.env.STORAGE_DIR = mkdtempSync(path.join(tmpdir(), 'emlook-uploads-'));
 process.env.CORS_ORIGINS = '';
 process.env.ADMIN_PHONES = '';
