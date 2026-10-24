@@ -30,7 +30,8 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 ## Durum
 - **E1 API tamam:** auth (OTP, refresh, logout), onboarding + rızalar, danışman başvurusu, belge yükleme, admin onay/ret, denetim kaydı. 20 e2e + 16 birim testi.
 - **Web tamam (E1):** giriş, kayıt, danışman başvuru ekranı, admin başvuru listesi/detay/onay. Belirteçler httpOnly çerezde; `src/app/api/*` köprüsü.
-- **Mobil (E1):** giriş, kod, kayıt, ana sayfa, başvuru + belge yükleme (Flutter, go_router, dio, flutter_secure_storage, file_picker).
+- **Mobil (E1) tamam:** giriş, kod, kayıt, ana sayfa, başvuru + belge yükleme (Flutter 3.47, go_router 18, dio 5, flutter_secure_storage 11, file_picker 13 — `FilePicker.pickFiles` statiktir ve liste döndürür). `flutter analyze` temiz, testler geçiyor.
+- **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
@@ -41,12 +42,17 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 
 ## Komutlar
 ```
-docker compose up -d          # PostgreSQL + Redis
+docker compose up -d          # PostgreSQL (port 5433) + Redis
 pnpm install
 pnpm --filter api db:migrate
 pnpm dev:api                  # http://localhost:3000/api/v1, Swagger: /docs
 pnpm --filter api test:e2e
 ```
+
+## Geliştirme ortamı notları
+- Docker PostgreSQL **5433** portunda (Windows makinelerdeki yerel PostgreSQL 5432 ile çakışmasın diye).
+- Android emülatörü yerel API'ye `http://10.0.2.2:3000/api/v1` ile bağlanır; şifresiz HTTP yalnızca debug manifestinde açık.
+- `NODE_ENV=production` miras alınan bir süreçte API kısa geliştirme anahtarlarını reddeder; `NODE_ENV=development` verin.
 
 ## Açık konular
 Trinkle360 lisans ve split ödeme kabiliyeti, EİDS Taşınmaz API entegrasyon başvurusu, fatura modeli (kim keser) — ödeme modülüne başlamadan netleşmeli.
