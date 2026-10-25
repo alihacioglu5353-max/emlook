@@ -192,7 +192,7 @@ class _Rules extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget rule(bool ok, String text) => Row(children: [
+    Widget rule(bool ok, String text) => Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(ok ? Icons.check_circle : Icons.radio_button_unchecked, size: 16, color: ok ? EmColors.ok : EmColors.inkSoft),
           const SizedBox(width: 6),
           Text(text, style: TextStyle(fontSize: 12, color: ok ? EmColors.ok : EmColors.inkSoft)),

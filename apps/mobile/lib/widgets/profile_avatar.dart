@@ -45,9 +45,10 @@ class ProfileAvatar extends StatelessWidget {
     final n = (name ?? '').trim();
     return CircleAvatar(
       radius: radius,
-      backgroundColor: EmColors.paper,
+      // Sayfa zemini de paper olduğu için baş harf dairesi marka tonunda çizilir.
+      backgroundColor: EmColors.brandTint,
       child: Text(n.isEmpty ? '?' : n.characters.first.toUpperCase(),
-          style: TextStyle(fontSize: radius * 0.8, fontWeight: FontWeight.w800, color: EmColors.ink)),
+          style: TextStyle(fontSize: radius * 0.8, fontWeight: FontWeight.w800, color: EmColors.brand)),
     );
   }
 }
