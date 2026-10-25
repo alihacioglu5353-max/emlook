@@ -79,10 +79,14 @@ class _AvatarScreenState extends State<AvatarScreen> {
                 ),
                 if (a != null) ...[
                   const SizedBox(width: 10),
-                  OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _run(() => widget.session.api.delete<void>('/me/avatar')),
-                    icon: const Icon(Icons.close_rounded),
-                    label: const Text('Kaldır'),
+                  // Temadaki butonlar tam genişlik ister; Row içinde Expanded şart.
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                      onPressed: _busy ? null : () => _run(() => widget.session.api.delete<void>('/me/avatar')),
+                      icon: const Icon(Icons.close_rounded),
+                      label: const Text('Kaldır'),
+                    ),
                   ),
                 ],
               ]),
