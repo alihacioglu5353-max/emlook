@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/theme.dart';
+import 'features/account/avatar_screen.dart';
+import 'features/account/security_screen.dart';
 import 'features/agents/agent_profile_screen.dart';
 import 'features/auth/code_screen.dart';
+import 'features/auth/forgot_screen.dart';
 import 'features/auth/phone_screen.dart';
 import 'features/discover/discover_screen.dart';
 import 'features/discover/interests_screen.dart';
@@ -88,6 +91,10 @@ GoRouter buildRouter(Session session) => GoRouter(
               path: 'kod',
               builder: (_, state) => CodeScreen(session: session, resendIn: state.extra as int? ?? 60),
             ),
+            GoRoute(
+              path: 'parola-sifirla',
+              builder: (_, state) => ForgotPasswordScreen(session: session, email: state.extra as String?),
+            ),
           ],
         ),
         GoRoute(path: '/kayit', builder: (_, _) => OnboardingScreen(session: session)),
@@ -147,6 +154,8 @@ GoRouter buildRouter(Session session) => GoRouter(
         ),
         GoRoute(path: '/basvuru', builder: (_, _) => VerificationScreen(session: session)),
         GoRoute(path: '/ofis', builder: (_, _) => OfficeScreen(session: session)),
+        GoRoute(path: '/profil-resmi', builder: (_, _) => AvatarScreen(session: session)),
+        GoRoute(path: '/guvenlik', builder: (_, _) => SecurityScreen(session: session)),
         GoRoute(path: '/bildirimler', builder: (_, _) => NotificationsScreen(session: session)),
       ],
     );

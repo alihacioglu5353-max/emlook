@@ -27,6 +27,7 @@ class Me {
     this.avatar,
     this.badge,
     this.score,
+    this.hasPassword = false,
   });
 
   final String id;
@@ -51,6 +52,9 @@ class Me {
   final AvatarData? avatar;
   final String? badge;
   final int? score;
+
+  /// E-posta + parola ile giriş açık mı
+  final bool hasPassword;
 
   bool get isAgent => role == 'agent';
   bool get isVerified => verificationStatus == VerificationStatus.approved;
@@ -77,6 +81,7 @@ class Me {
       avatar: AvatarData.fromJson(j['avatar']),
       badge: agent?['badge'] as String?,
       score: (agent?['score'] as num?)?.toInt(),
+      hasPassword: j['hasPassword'] as bool? ?? false,
     );
   }
 }
@@ -94,9 +99,12 @@ class VerificationDoc {
   final String originalName;
   final int sizeBytes;
 
+  /// Yönetici listesi yüklenemezse kullanılan varsayılan adlar
   static const typeLabels = {
     'authority_certificate': 'Yetki belgesi',
     'identity': 'Kimlik',
+    'tax_plate': 'Vergi levhası',
+    'signature_circular': 'İmza sirküleri',
     'other': 'Diğer',
   };
 
@@ -107,6 +115,22 @@ class VerificationDoc {
         type: j['type'] as String,
         originalName: j['originalName'] as String,
         sizeBytes: (j['sizeBytes'] as num).toInt(),
+      );
+}
+
+/// Yöneticinin belirlediği evrak türü (`/agents/document-types`)
+class DocumentTypeDef {
+  const DocumentTypeDef({required this.key, required this.label, this.description, required this.required});
+  final String key;
+  final String label;
+  final String? description;
+  final bool required;
+
+  factory DocumentTypeDef.fromJson(Map<String, dynamic> j) => DocumentTypeDef(
+        key: j['key'] as String,
+        label: j['label'] as String,
+        description: j['description'] as String?,
+        required: j['required'] as bool? ?? false,
       );
 }
 
@@ -121,6 +145,7 @@ class Verification {
     required this.rejectionReason,
     required this.documents,
     required this.missing,
+    this.documentTypes = const [],
   });
 
   final VerificationStatus status;
@@ -132,6 +157,7 @@ class Verification {
   final String? rejectionReason;
   final List<VerificationDoc> documents;
   final List<String> missing;
+  final List<DocumentTypeDef> documentTypes;
 
   bool get editable =>
       status == VerificationStatus.draft || status == VerificationStatus.rejected;
@@ -143,6 +169,12 @@ class Verification {
     'district': 'İlçe',
     'document:authority_certificate': 'Yetki belgesi dosyası',
   };
+
+  String typeLabel(String key) =>
+      documentTypes.where((t) => t.key == key).firstOrNull?.label ?? VerificationDoc.typeLabels[key] ?? key;
+
+  String missingLabel(String m) =>
+      m.startsWith('document:') ? '${typeLabel(m.substring(9))} dosyası' : missingLabels[m] ?? m;
 
   factory Verification.fromJson(Map<String, dynamic> j) {
     final p = j['profile'] as Map<String, dynamic>;
@@ -158,6 +190,9 @@ class Verification {
           .map((d) => VerificationDoc.fromJson(d as Map<String, dynamic>))
           .toList(),
       missing: (j['missing'] as List).cast<String>(),
+      documentTypes: (j['documentTypes'] as List<dynamic>? ?? const [])
+          .map((t) => DocumentTypeDef.fromJson(t as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

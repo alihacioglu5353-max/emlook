@@ -38,7 +38,25 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    ProfileAvatar(api: session.api, avatar: me.avatar, name: me.fullName, radius: 22),
+                    Semantics(
+                      button: true,
+                      label: 'Profil resmini değiştir',
+                      child: GestureDetector(
+                        onTap: () => context.push('/profil-resmi'),
+                        child: Stack(clipBehavior: Clip.none, children: [
+                          ProfileAvatar(api: session.api, avatar: me.avatar, name: me.fullName, radius: 22),
+                          Positioned(
+                            right: -1,
+                            bottom: -1,
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(color: EmColors.ink, shape: BoxShape.circle),
+                              child: const Icon(Icons.edit, size: 10, color: Colors.white),
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
                     const SizedBox(width: 12),
                     Flexible(
                       child: Text(
@@ -78,6 +96,8 @@ class HomeScreen extends StatelessWidget {
                   (Icons.bookmark_border, 'Kaydedilenler', '/kaydedilenler'),
                   (Icons.notifications_none_rounded, 'Bildirimler', '/bildirimler'),
                   if (me.isAgent) (Icons.person_search_outlined, 'Profilim (herkese görünen)', '/danisman/${me.id}'),
+                  (Icons.account_circle_outlined, 'Profil resmi', '/profil-resmi'),
+                  (Icons.lock_outline_rounded, 'Hesap ve güvenlik', '/guvenlik'),
                 ]),
                 const SizedBox(height: 16),
                 _ConsentsCard(session: session, granted: me.marketingConsent),

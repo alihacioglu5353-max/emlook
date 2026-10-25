@@ -38,6 +38,45 @@ void main() {
     expect(v.missing, ['businessName', 'district']);
   });
 
+  test('Verification yöneticinin evrak listesini ve eksik belge adlarını okur', () {
+    final v = Verification.fromJson({
+      'status': 'draft',
+      'profile': {'licenseNumber': null, 'businessName': null, 'city': null, 'district': null, 'bio': null},
+      'rejectionReason': null,
+      'documents': [
+        {'id': 'd1', 'type': 'tax_plate', 'originalName': 'levha.bmp', 'sizeBytes': 4096},
+      ],
+      'documentTypes': [
+        {'key': 'authority_certificate', 'label': 'Taşınmaz Ticareti Yetki Belgesi', 'description': null, 'required': true},
+        {'key': 'tax_plate', 'label': 'Vergi levhası', 'description': 'Güncel yıl', 'required': false},
+      ],
+      'missing': ['licenseNumber', 'document:authority_certificate'],
+    });
+    expect(v.documentTypes, hasLength(2));
+    expect(v.documentTypes.first.required, isTrue);
+    expect(v.typeLabel('tax_plate'), 'Vergi levhası');
+    expect(v.missingLabel('document:authority_certificate'), 'Taşınmaz Ticareti Yetki Belgesi dosyası');
+    expect(v.missingLabel('licenseNumber'), 'Yetki belgesi numarası');
+  });
+
+  test('Me profil resmi, rozet ve parola bilgisini okur', () {
+    final me = Me.fromJson({
+      'id': 'u1',
+      'phone': '+905320000001',
+      'fullName': 'Ayşe Yılmaz',
+      'email': 'ayse@demo.emlook.app',
+      'role': 'agent',
+      'onboardingRequired': false,
+      'hasPassword': true,
+      'avatar': {'kind': 'preset', 'preset': 'p04'},
+      'agent': {'verificationStatus': 'approved', 'badge': 'gold', 'score': 212},
+    });
+    expect(me.avatar?.preset, 'p04');
+    expect(me.badge, 'gold');
+    expect(me.score, 212);
+    expect(me.hasPassword, isTrue);
+  });
+
   test('MyOffice üyelik, talep ve davetleri okur', () {
     final o = MyOffice.fromJson({
       'membership': {
