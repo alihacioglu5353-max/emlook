@@ -39,7 +39,7 @@ class _AvatarScreenState extends State<AvatarScreen> {
     );
     final file = picked.isEmpty ? null : picked.first;
     if (file?.path == null) return;
-    if (file!.size > 5 * 1024 * 1024) {
+    if ((await file!.length() ?? 0) > 5 * 1024 * 1024) {
       if (mounted) showError(context, 'Fotoğraf en fazla 5 MB olabilir');
       return;
     }

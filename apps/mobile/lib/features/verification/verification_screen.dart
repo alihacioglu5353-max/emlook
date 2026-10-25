@@ -101,7 +101,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     );
     final file = picked.isEmpty ? null : picked.first;
     if (file?.path == null) return;
-    if (file!.size > 10 * 1024 * 1024) {
+    if ((await file!.length() ?? 0) > 10 * 1024 * 1024) {
       if (mounted) showError(context, 'Dosya en fazla 10 MB olabilir');
       return;
     }
