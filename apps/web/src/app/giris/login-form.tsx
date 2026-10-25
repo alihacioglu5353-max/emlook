@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, BadgeCheck, Mail, Smartphone } from "lucide-react";
+import { ArrowRight, Mail, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -35,10 +35,10 @@ export function LoginForm() {
 
   return (
     <div>
-      <h2 className="text-3xl font-extrabold tracking-tight">Giriş yap</h2>
-      <p className="mt-2 text-ink-soft">Emlook hesabına telefonun veya e-postanla gir.</p>
+      <h2 className="text-[1.75rem] font-bold tracking-tight">Giriş yap</h2>
+      <p className="mt-1.5 text-sm text-ink-soft">Emlook hesabınıza telefon numaranız veya e-posta adresinizle giriş yapın.</p>
 
-      <div role="tablist" aria-label="Giriş yöntemi" className="mt-7 grid grid-cols-2 rounded-xl border border-line bg-paper p-1">
+      <div role="tablist" aria-label="Giriş yöntemi" className="mt-8 grid grid-cols-2 rounded-lg border border-line bg-paper p-1">
         {(
           [
             ["phone", "Telefon ile", Smartphone],
@@ -53,7 +53,7 @@ export function LoginForm() {
             aria-selected={method === m}
             aria-controls={`panel-${m}`}
             onClick={() => setMethod(m)}
-            className={`flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-bold transition ${
+            className={`flex h-10 items-center justify-center gap-2 rounded-md text-sm font-semibold transition ${
               method === m ? "bg-surface text-ink shadow-sm" : "text-ink-soft hover:text-ink"
             }`}
           >
@@ -73,19 +73,13 @@ export function LoginForm() {
         {method === "phone" ? <PhoneLogin onDone={finish} /> : <EmailLogin onDone={finish} onUsePhone={() => setMethod("phone")} />}
       </div>
 
-      <Link
-        href="/basvuru"
-        className="group mt-8 flex items-center gap-4 rounded-xl border border-line bg-surface p-4 transition hover:border-brand/40 hover:shadow-sm"
-      >
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand text-white">
-          <BadgeCheck className="h-5 w-5" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold text-ink">Emlak danışmanı mısın?</span>
-          <span className="block text-xs text-ink-soft">Yetki belgen ve evraklarınla başvur, onaylı danışman rozetini al.</span>
-        </span>
-        <ArrowRight className="h-4 w-4 text-ink-soft transition group-hover:translate-x-0.5 group-hover:text-brand" />
-      </Link>
+      <div className="mt-8 border-t border-line pt-6 text-center text-sm text-ink-soft">
+        Emlak danışmanı mısınız?{" "}
+        <Link href="/basvuru" className="group inline-flex items-center gap-1 font-semibold text-ink hover:text-brand">
+          Onay başvurusu yapın
+          <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" aria-hidden />
+        </Link>
+      </div>
 
       <LegalNotice />
     </div>
@@ -144,7 +138,7 @@ function PhoneLogin({ onDone }: { onDone: (onboardingRequired: boolean) => Promi
   if (step === "phone") {
     return (
       <form onSubmit={sendCode} className="space-y-5">
-        <Field label="Cep telefonu" hint="Tek kullanımlık bir kod göndereceğiz. Hesabın yoksa aynı adımla oluşturulur.">
+        <Field label="Cep telefonu" hint="Numaranıza tek kullanımlık bir doğrulama kodu gönderilir. Hesabınız yoksa bu adımla oluşturulur.">
           <Input
             type="tel"
             inputMode="tel"
@@ -167,7 +161,7 @@ function PhoneLogin({ onDone }: { onDone: (onboardingRequired: boolean) => Promi
   return (
     <form onSubmit={verify} className="space-y-5">
       <p className="text-sm text-ink-soft">
-        <span className="font-semibold text-ink">{phone}</span> numarasına gelen 6 haneli kodu yaz.{" "}
+        <span className="font-semibold text-ink">{phone}</span> numarasına gönderilen 6 haneli kodu girin.{" "}
         <button
           type="button"
           className="font-semibold text-brand underline-offset-2 hover:underline"
@@ -257,7 +251,7 @@ function EmailLogin({ onDone, onUsePhone }: { onDone: (onboardingRequired: boole
         <PasswordInput
           id="login-password"
           autoComplete="current-password"
-          placeholder="Parolan"
+          placeholder="Parolanız"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -268,8 +262,8 @@ function EmailLogin({ onDone, onUsePhone }: { onDone: (onboardingRequired: boole
           {error.message}
           {error.code === "INVALID_CREDENTIALS" && (
             <span className="mt-1 block text-ink-soft">
-              Henüz parola belirlemediysen telefonla giriş yapıp <strong>Panel › Giriş ve güvenlik</strong> bölümünden
-              belirleyebilir ya da &quot;Parolamı unuttum&quot; ile oluşturabilirsin.
+              Parola belirlemediyseniz telefonla giriş yapıp <strong>Panel › Giriş ve güvenlik</strong> bölümünden
+              belirleyebilir ya da &quot;Parolamı unuttum&quot; ile oluşturabilirsiniz.
             </span>
           )}
         </Alert>
@@ -278,9 +272,9 @@ function EmailLogin({ onDone, onUsePhone }: { onDone: (onboardingRequired: boole
         Giriş yap
       </Button>
       <p className="text-center text-sm text-ink-soft">
-        Hesabın yok mu?{" "}
+        Hesabınız yok mu?{" "}
         <button type="button" onClick={onUsePhone} className="font-semibold text-ink hover:text-brand">
-          Telefonla kayıt ol
+          Telefonla kayıt olun
         </button>
       </p>
     </form>
@@ -289,19 +283,11 @@ function EmailLogin({ onDone, onUsePhone }: { onDone: (onboardingRequired: boole
 
 /** Giriş ekranındaki hukuki bilgilendirme: metinler pencere içinde okunabilir */
 function LegalNotice() {
-  const link = "font-semibold text-ink underline decoration-line underline-offset-2 hover:decoration-ink";
+  const link = "text-ink underline decoration-line underline-offset-2 hover:decoration-ink";
   return (
-    <div className="mt-4 rounded-xl border border-line bg-paper/70 p-4 text-xs leading-relaxed text-ink-soft">
-      <p>
-        Devam ederek <LegalLink slug="kosullar" className={link}>Kullanım Koşulları</LegalLink>&apos;nı kabul etmiş olursun.
-        Kişisel verilerinin hangi amaçla ve hukuki sebeple işlendiğini{" "}
-        <LegalLink slug="kvkk" className={link}>KVKK Aydınlatma Metni</LegalLink>&apos;nde bulabilirsin.
-      </p>
-      <p className="mt-2">
-        Kampanya ve duyuru iletileri yalnızca izin verirsen gönderilir; izni dilediğin zaman geri alabilirsin (
-        <LegalLink slug="ticari-ileti" className={link}>Ticari Elektronik İleti</LegalLink>).
-      </p>
-      <p className="mt-2">Oturumun şifreli bağlantıyla korunur; parolan yalnızca tek yönlü özet olarak saklanır.</p>
-    </div>
+    <p className="mt-6 text-center text-xs leading-relaxed text-ink-soft">
+      Devam ederek <LegalLink slug="kosullar" className={link}>Kullanım Koşulları</LegalLink>&apos;nı kabul etmiş olursunuz.
+      Kişisel verileriniz <LegalLink slug="kvkk" className={link}>KVKK Aydınlatma Metni</LegalLink> kapsamında işlenir.
+    </p>
   );
 }
