@@ -169,7 +169,7 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
 
 ## Sıradaki
-1. Bilgisayarda mobil doğrulama: `flutter pub get`, `flutter analyze`, `flutter test`, emülatörde uçtan uca deneme
+1. Mobil: uygulama simgesi ve açılış ekranı hâlâ Flutter varsayılanı (marka görseli gerekli); keşfet kartında avatar/rozet yok
 2. Hukuk danışmanı incelemesi → metinlerde `draft: false`, şirket bilgileri
 3. Firebase projesi + mobil push kaydı; Netgsm hesabı ve başlık onayı; S3/R2 kovası
 
@@ -188,6 +188,10 @@ pnpm --filter api test:e2e
 - Docker PostgreSQL **5433** portunda (Windows makinelerdeki yerel PostgreSQL 5432 ile çakışmasın diye).
 - Emülatör: `Medium_Phone_API_37.0` AVD (GPU'lu, ~80 sn'de açılır); `emlook` AVD'si GPU kapalı olduğu için açılmıyor.
   Bilgisayarda yardımcı betikler: `C:\Users\Pc\emlook-emulator.ps1` (aç), `emlook-apk.ps1` (debug APK), `emlook-shot.ps1` (ekran görüntüsü).
+- Emülatör testi (25 Ekim): e-posta/telefon girişi, parolamı unuttum, hesap ve güvenlik, profil resmi (fotoğraf + hazır), başvuru evrakları, akış, arama, keşfet denendi.
+  Bulunan iki hata düzeltildi: görsel önbelleğinde kendini bekleyen Future (kart fotoğrafları), temadaki tam genişlik butonun Row içinde kullanımı (boş sayfa).
+  Temada butonlar `Size.fromHeight` ile tam genişlik: Row içinde `Expanded` olmadan kullanma.
+- Bilgisayarda Gradle: Kotlin derleyici süreci Windows'ta takılıyor; `~/.gradle/gradle.properties` içinde `kotlin.compiler.execution.strategy=in-process`. SDK Platform 35/36 ve NDK 28.2 kurulu.
 - Android emülatörü yerel API'ye `http://10.0.2.2:3000/api/v1` ile bağlanır; şifresiz HTTP yalnızca debug manifestinde açık.
 - `NODE_ENV=production` miras alınan bir süreçte API kısa geliştirme anahtarlarını reddeder; `NODE_ENV=development` verin.
 
