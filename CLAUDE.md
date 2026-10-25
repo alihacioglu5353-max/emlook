@@ -161,6 +161,9 @@ v1.1 ve v2.0 özellikleri (abonelik, Look/video, AI, reklam) MVP'ye alınmaz.
 - **E8 tamam (API, web; test sağlayıcısıyla):** IBAN hesabı, ödeme talebi ve bağlantısı, split, imzalı webhook, fatura kaydı. Toplam 55 e2e testi.
 - **E9 tamam (API, web):** yönetim özeti, kullanıcı askıya alma, ilan moderasyonu ve şikâyetler, EİDS elle doğrulama, ödeme listesi. Toplam 60 e2e + 32 birim testi.
 - **Mobil E3–E8 tamam:** alt menülü kabuk (Akış/Keşfet/Ara/Mesajlar/Profil), portföy, ilan detay, keşfet, arama, talepler, mesajlar, ödemeler (CI'da analyze + test yeşil).
+- **Mobil web'e eşitlendi:** Telefon / E-posta sekmeli giriş, parolamı unuttum (`/giris/parola-sifirla`), hesap ve güvenlik (`/guvenlik`: ad, e-posta, parola),
+  profil resmi (`/profil-resmi`: fotoğraf veya p01–p12), puan rozeti (`widgets/profile_avatar.dart`, adlar `/settings/public`), başvuruda yöneticinin evrak listesi
+  (tür başına yükleme, PDF/JPG/PNG/BMP/WEBP), aramada "Tümü" çipleri. Parola kuralları `core/password.dart` (API ile aynı).
 - **Sağlayıcılar tamam:** Netgsm SMS, S3 depolama, FCM push. **Hukuki metinler** taslak olarak yayında (62 e2e + 54 birim testi).
 - **CI:** GitHub Actions ile API (lint, tip, birim, e2e), web (lint, build) ve mobil (analyze, test) işleri yeşil.
 - Web, Next.js 16 kullanıyor: kod yazmadan önce `apps/web/node_modules/next/dist/docs/` altındaki ilgili rehbere bak (bkz. `apps/web/AGENTS.md`).
@@ -183,6 +186,8 @@ pnpm --filter api test:e2e
 
 ## Geliştirme ortamı notları
 - Docker PostgreSQL **5433** portunda (Windows makinelerdeki yerel PostgreSQL 5432 ile çakışmasın diye).
+- Emülatör: `Medium_Phone_API_37.0` AVD (GPU'lu, ~80 sn'de açılır); `emlook` AVD'si GPU kapalı olduğu için açılmıyor.
+  Bilgisayarda yardımcı betikler: `C:\Users\Pc\emlook-emulator.ps1` (aç), `emlook-apk.ps1` (debug APK), `emlook-shot.ps1` (ekran görüntüsü).
 - Android emülatörü yerel API'ye `http://10.0.2.2:3000/api/v1` ile bağlanır; şifresiz HTTP yalnızca debug manifestinde açık.
 - `NODE_ENV=production` miras alınan bir süreçte API kısa geliştirme anahtarlarını reddeder; `NODE_ENV=development` verin.
 
