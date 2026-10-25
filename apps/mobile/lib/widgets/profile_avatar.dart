@@ -6,6 +6,8 @@ import '../core/theme.dart';
 import 'auth_image.dart';
 
 /// Hazır avatarlar (p01–p12)
+const avatarPresetIds = ['p01', 'p02', 'p03', 'p04', 'p05', 'p06', 'p07', 'p08', 'p09', 'p10', 'p11', 'p12'];
+
 const _presetColors = [
   Color(0xFFC8283F), Color(0xFF2F7DE1), Color(0xFF1F8A5B), Color(0xFFA8670A),
   Color(0xFF7A4CC2), Color(0xFF0E8C8C), Color(0xFFD9653B), Color(0xFF3D5A80),

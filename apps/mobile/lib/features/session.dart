@@ -76,6 +76,36 @@ class Session extends ChangeNotifier {
     await reloadMe();
   }
 
+  /// E-posta + parola ile giriş (kayıt yalnızca telefonla yapılır).
+  Future<void> passwordLogin(String email, String password) async {
+    final res = await api.post<Map<String, dynamic>>(
+      '/auth/password/login',
+      data: {'email': email.trim(), 'password': password},
+      auth: false,
+    );
+    await tokens.save(
+      access: res['accessToken'] as String,
+      refresh: res['refreshToken'] as String,
+    );
+    await reloadMe();
+  }
+
+  /// Parola yenileme bağlantısı ister; yanıt her durumda aynıdır.
+  Future<void> forgotPassword(String email) => api.post<void>(
+        '/auth/password/forgot',
+        data: {'email': email.trim()},
+        auth: false,
+      );
+
+  /// Parola belirler veya değiştirir; diğer cihazlardaki oturumlar kapanır.
+  Future<void> changePassword(String newPassword, {String? currentPassword}) async {
+    await api.put<void>('/auth/password', data: {
+      'newPassword': newPassword,
+      if (currentPassword != null && currentPassword.isNotEmpty) 'currentPassword': currentPassword,
+    });
+    await reloadMe();
+  }
+
   Future<void> onboard({
     required String fullName,
     required String accountType,

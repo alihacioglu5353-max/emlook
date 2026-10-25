@@ -20,9 +20,9 @@ class _VerificationScreenState extends State<VerificationScreen> {
   Verification? _data;
   Object? _loadError;
   bool _saving = false;
-  bool _uploading = false;
   bool _submitting = false;
-  String _docType = 'authority_certificate';
+  /// Yüklenmekte olan evrak türü
+  String? _uploadingType;
 
   final _license = TextEditingController();
   final _business = TextEditingController();
@@ -93,26 +93,30 @@ class _VerificationScreenState extends State<VerificationScreen> {
     }
   }
 
-  Future<void> _upload() async {
+  Future<void> _upload(String type) async {
     // İptal edilirse boş liste döner.
     final picked = await FilePicker.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
+      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'bmp', 'webp'],
     );
     final file = picked.isEmpty ? null : picked.first;
     if (file?.path == null) return;
+    if ((await file!.length() ?? 0) > 10 * 1024 * 1024) {
+      if (mounted) showError(context, 'Dosya en fazla 10 MB olabilir');
+      return;
+    }
 
-    setState(() => _uploading = true);
+    setState(() => _uploadingType = type);
     try {
       final form = FormData.fromMap({
-        'type': _docType,
-        'file': await MultipartFile.fromFile(file!.path!, filename: file.name),
+        'type': type,
+        'file': await MultipartFile.fromFile(file.path!, filename: file.name),
       });
       await _apply(await _api.post<Map<String, dynamic>>('/agents/me/documents', data: form));
     } catch (e) {
       if (mounted) showError(context, e);
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (mounted) setState(() => _uploadingType = null);
     }
   }
 
@@ -178,37 +182,11 @@ class _VerificationScreenState extends State<VerificationScreen> {
                   ]),
                   const SizedBox(height: 16),
                   _section('Belgeler', [
-                    const Text('PDF, JPG veya PNG · en fazla 10 MB',
-                        style: TextStyle(color: EmColors.inkSoft, fontSize: 13)),
-                    for (final doc in d.documents)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.description_outlined),
-                        title: Text(doc.originalName, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Text('${doc.typeLabel} · ${(doc.sizeBytes / 1024).round()} KB'),
-                        trailing: d.editable
-                            ? IconButton(
-                                tooltip: 'Kaldır',
-                                icon: const Icon(Icons.close_rounded),
-                                onPressed: () => _remove(doc),
-                              )
-                            : null,
-                      ),
-                    if (d.editable) ...[
-                      DropdownButtonFormField<String>(
-                        initialValue: _docType,
-                        decoration: const InputDecoration(labelText: 'Belge türü'),
-                        items: VerificationDoc.typeLabels.entries
-                            .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
-                            .toList(),
-                        onChanged: (v) => setState(() => _docType = v ?? _docType),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _uploading ? null : _upload,
-                        icon: const Icon(Icons.upload_file_rounded),
-                        label: Text(_uploading ? 'Yükleniyor…' : 'Dosya seç ve yükle'),
-                      ),
-                    ],
+                    const Text(
+                      'Yöneticinin istediği belgeler aşağıda. PDF, JPG, PNG, BMP veya WEBP · en fazla 10 MB.',
+                      style: TextStyle(color: EmColors.inkSoft, fontSize: 13),
+                    ),
+                    for (final t in _types(d)) _docType(d, t),
                   ]),
                   if (d.editable) ...[
                     const SizedBox(height: 16),
@@ -217,6 +195,84 @@ class _VerificationScreenState extends State<VerificationScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  /// Yönetici listesi + listede olmayan ama yüklenmiş türler
+  List<DocumentTypeDef> _types(Verification d) {
+    final list = [...d.documentTypes];
+    if (list.isEmpty) {
+      list.add(const DocumentTypeDef(key: 'authority_certificate', label: 'Yetki belgesi', required: true));
+    }
+    for (final doc in d.documents) {
+      if (!list.any((t) => t.key == doc.type)) {
+        list.add(DocumentTypeDef(key: doc.type, label: d.typeLabel(doc.type), required: false));
+      }
+    }
+    return list;
+  }
+
+  Widget _docType(Verification d, DocumentTypeDef t) {
+    final docs = d.documents.where((x) => x.type == t.key).toList();
+    final done = docs.isNotEmpty;
+    final uploading = _uploadingType == t.key;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: done ? EmColors.ok.withValues(alpha: 0.4) : EmColors.line),
+        color: done ? EmColors.okTint.withValues(alpha: 0.35) : null,
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(done ? Icons.check_circle : Icons.description_outlined,
+              size: 20, color: done ? EmColors.ok : EmColors.inkSoft),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(t.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: t.required ? EmColors.brandTint : EmColors.paper,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(t.required ? 'Zorunlu' : 'İsteğe bağlı',
+                style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w700, color: t.required ? EmColors.brand : EmColors.inkSoft)),
+          ),
+          const SizedBox(width: 6),
+        ]),
+        if (t.description != null && t.description!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 28, top: 4, right: 6),
+            child: Text(t.description!, style: const TextStyle(fontSize: 12, color: EmColors.inkSoft)),
+          ),
+        for (final doc in docs)
+          ListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.only(left: 20),
+            leading: Icon(doc.originalName.toLowerCase().endsWith('.pdf') ? Icons.picture_as_pdf_outlined : Icons.image_outlined),
+            title: Text(doc.originalName, maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Text('${(doc.sizeBytes / 1024).round()} KB'),
+            trailing: d.editable
+                ? IconButton(tooltip: 'Kaldır', icon: const Icon(Icons.close_rounded), onPressed: () => _remove(doc))
+                : null,
+          ),
+        if (d.editable)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _uploadingType != null ? null : () => _upload(t.key),
+              icon: uploading
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(done ? Icons.add_rounded : Icons.upload_file_rounded),
+              label: Text(uploading ? 'Yükleniyor…' : done ? 'Bir dosya daha ekle' : 'Dosya seç ve yükle'),
+            ),
+          )
+        else
+          const SizedBox(height: 6),
+      ]),
     );
   }
 
@@ -275,7 +331,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
             Text(
               d.missing.isEmpty
                   ? 'Her şey hazır. Gönderdikten sonra inceleme bitene kadar bilgiler kilitlenir.'
-                  : 'Eksikler: ${d.missing.map((m) => Verification.missingLabels[m] ?? m).join(', ')}',
+                  : 'Eksikler: ${d.missing.map(d.missingLabel).join(', ')}',
               style: const TextStyle(color: Colors.white70),
             ),
             const SizedBox(height: 14),
