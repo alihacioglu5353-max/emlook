@@ -48,13 +48,13 @@ typedef SessionExpired = void Function();
 /// Erişim belirtecini ekleyen, süresi dolduğunda bir kez yenileyip isteği
 /// tekrarlayan HTTP istemcisi.
 class ApiClient {
-  ApiClient(this._tokens, {String? baseUrl})
-      : dio = Dio(BaseOptions(
-          baseUrl: baseUrl ?? AppConfig.apiUrl,
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 30),
-          contentType: Headers.jsonContentType,
-        )) {
+  ApiClient(this._tokens, {String? baseUrl, HttpClientAdapter? adapter})
+      : dio = Dio(_options(baseUrl)),
+        _bare = Dio(_options(baseUrl)) {
+    if (adapter != null) {
+      dio.httpClientAdapter = adapter;
+      _bare.httpClientAdapter = adapter;
+    }
     dio.interceptors.add(QueuedInterceptorsWrapper(
       onRequest: (options, handler) async {
         final token = await _tokens.accessToken;
@@ -75,7 +75,8 @@ class ApiClient {
           req.extra['retried'] = true;
           req.headers['Authorization'] = 'Bearer ${await _tokens.accessToken}';
           try {
-            return handler.resolve(await dio.fetch(req));
+            // Tekrar deneme ara katmansız istemciyle: hatası bu kuyruğa düşüp kilitlenmesin.
+            return handler.resolve(await _bare.fetch(req));
           } on DioException catch (e) {
             return handler.next(e);
           }
@@ -87,8 +88,20 @@ class ApiClient {
     ));
   }
 
+  static BaseOptions _options(String? baseUrl) => BaseOptions(
+        baseUrl: baseUrl ?? AppConfig.apiUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 30),
+        contentType: Headers.jsonContentType,
+      );
+
   final TokenStore _tokens;
   final Dio dio;
+
+  /// Ara katmansız istemci: belirteç yenileme ve yenileme sonrası tekrar deneme.
+  /// QueuedInterceptor hata kuyruğu sırayla işlenir; yenileme isteği aynı istemciden
+  /// gidip hata alırsa kendi sırasını bekler ve uygulama açılışta kilitlenir.
+  final Dio _bare;
   SessionExpired? onSessionExpired;
   Future<bool>? _refreshing;
 
@@ -96,10 +109,9 @@ class ApiClient {
         try {
           final refresh = await _tokens.refreshToken;
           if (refresh == null) return false;
-          final res = await dio.post<Map<String, dynamic>>(
+          final res = await _bare.post<Map<String, dynamic>>(
             '/auth/refresh',
             data: {'refreshToken': refresh},
-            options: Options(extra: {'auth': false}),
           );
           await _tokens.save(
             access: res.data!['accessToken'] as String,
